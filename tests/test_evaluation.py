@@ -9,7 +9,7 @@ from src.processor import ChatbotAssistant
 
 os.environ["DEEPEVAL_PER_TASK_TIMEOUT_SECONDS_OVERRIDE"] = "300"
 
-# Load Datasets
+# Load Datasetss
 single_ds = EvaluationDataset()
 single_ds.add_goldens_from_json_file(file_path="data/synthetic_data/single_turn_goldens.json")
 
