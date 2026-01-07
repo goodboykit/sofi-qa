@@ -1,0 +1,13 @@
+deepeval>=3.7.0
+pytest>=8.0.0
+pytest-asyncio
+pytest-xdist
+chromadb>=0.4.0
+langchain-core
+langchain-community
+langchain-text-splitters
+pypdf
+Pillow
+boto3
+python-dotenv
+openai          
