@@ -37,9 +37,6 @@ class DatasetGenerator:
         self.synthesizer.synthetic_goldens = []
         self.synthesizer.generate_conversational_goldens_from_docs(
             document_paths=paths,
-            max_goldens_per_context=3,
-            # Ensure the chunks are large enough to support a conversation
-            chunk_size=1024, 
-            chunk_overlap=200
+            max_goldens_per_context=3
         )
         self.synthesizer.save_as(file_type='json', directory="data/synthetic_data", file_name="multi_turn_goldens")
