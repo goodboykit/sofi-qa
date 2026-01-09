@@ -212,6 +212,21 @@ async def get_synthesis_status(job_id: str):
     return synthesis_jobs[job_id]
 
 
+@app.post("/api/synthesis/cancel/{job_id}")
+async def cancel_synthesis(job_id: str):
+    """Cancel a synthesis job."""
+    if job_id not in synthesis_jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    job = synthesis_jobs[job_id]
+    if job["status"] in ["pending", "running"]:
+        job["status"] = "cancelled"
+        job["message"] = "Job cancelled by user"
+        return {"message": f"Job {job_id} cancelled"}
+    
+    return {"message": f"Job {job_id} cannot be cancelled (status: {job['status']})"}
+
+
 # ============ Goldens Endpoints ============
 
 @app.get("/api/goldens")
