@@ -876,24 +876,24 @@ function App() {
                           </div>
                           <div className="data-card-body">
                             {dataTab === 'single' ? (
-                              <div className="chat-container">
-                                <div className="chat-bubble user">
-                                  <span className="chat-label">Input</span>
+                              <div className="data-display-stack">
+                                <div className="data-box input">
+                                  <span className="data-box-label">Input</span>
                                   {item.input || item.scenario}
                                 </div>
-                                <div className="chat-bubble bot">
-                                  <span className="chat-label">Expected Output</span>
+                                <div className="data-box output">
+                                  <span className="data-box-label">Expected Output</span>
                                   {item.expected_output || item.expected_outcome}
                                 </div>
                               </div>
                             ) : (
-                              <div className="chat-container">
-                                <div className="chat-bubble user">
-                                  <span className="chat-label">Scenario</span>
+                              <div className="data-display-stack">
+                                <div className="data-box input">
+                                  <span className="data-box-label">Scenario</span>
                                   {item.scenario}
                                 </div>
-                                <div className="chat-bubble bot">
-                                  <span className="chat-label">Expected Outcome</span>
+                                <div className="data-box output">
+                                  <span className="data-box-label">Expected Outcome</span>
                                   {item.expected_outcome}
                                 </div>
                               </div>
@@ -903,7 +903,20 @@ function App() {
                                 <summary>View Context</summary>
                                 <div className="context-list">
                                   {Array.isArray(item.context) ? item.context.map((c: string, cIdx: number) => (
-                                    <div key={cIdx} className="context-item">{c}</div>
+                                    <div key={cIdx} className="context-item chat-mode">
+                                      <div className="chat-container context-mode">
+                                        {c.split('\n').filter(line => line.trim() !== '').map((line, lIdx) => {
+                                          const t = line.trim().toLowerCase();
+                                          const questionWords = ['what', 'when', 'where', 'who', 'why', 'how', 'is', 'are', 'was', 'were', 'do', 'does', 'did', 'can', 'could', 'will', 'would', 'should', 'may', 'might', 'must', 'have', 'has', 'had'];
+                                          const isQuestion = t.endsWith('?') || questionWords.some(w => t.startsWith(w + ' '));
+                                          return (
+                                            <div key={lIdx} className={`chat-bubble ${isQuestion ? 'user' : 'bot'} context-bubble`}>
+                                              {line}
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
                                   )) : item.context}
                                 </div>
                               </details>

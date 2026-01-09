@@ -1612,23 +1612,24 @@ input[type="range"] {
 }
 
 /* ========================================
-   Chat Bubbles
+   Chat Bubbles (Context View Only)
    ======================================== */
 .chat-container {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 12px;
+  margin-bottom: 0;
+  font-family: 'Poppins', sans-serif;
 }
 
 .chat-bubble {
   max-width: 85%;
-  padding: 16px 20px;
+  padding: 14px 18px;
   border-radius: 18px;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.6;
   position: relative;
-  animation: fadeIn 0.3s ease;
+  font-family: 'Poppins', sans-serif;
 }
 
 .chat-bubble.user {
@@ -1637,6 +1638,12 @@ input[type="range"] {
   color: var(--text-primary);
   border-bottom-left-radius: 4px;
   border: 1px solid var(--border);
+}
+
+.context-bubble {
+  padding: 10px 14px;
+  font-size: 13px;
+  max-width: 90%;
 }
 
 .chat-bubble.bot {
@@ -1648,7 +1655,7 @@ input[type="range"] {
 }
 
 .chat-label {
-  font-size: 10px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.8px;
   margin-bottom: 6px;
@@ -1662,5 +1669,66 @@ input[type="range"] {
 }
 
 .chat-bubble.bot .chat-label {
+  color: var(--accent);
+}
+
+.context-item.chat-mode {
+  border: none !important;
+  padding: 0 !important;
+}
+
+.chat-container.context-mode {
+  gap: 8px;
+  margin-bottom: 0;
+}
+
+/* ========================================
+   Data Display Containers (Main View)
+   ======================================== */
+.data-display-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+  width: 100%;
+}
+
+.data-box {
+  width: 100%;
+  padding: 20px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  line-height: 1.6;
+  position: relative;
+  font-family: 'Poppins', sans-serif;
+}
+
+.data-box.input {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+.data-box.output {
+  background: rgba(0, 201, 167, 0.1);
+  border: 1px solid rgba(0, 201, 167, 0.3);
+  color: #fff;
+}
+
+.data-box-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  display: block;
+  opacity: 0.9;
+}
+
+.data-box.input .data-box-label {
+  color: var(--text-muted);
+}
+
+.data-box.output .data-box-label {
   color: var(--accent);
 }
