@@ -3,18 +3,53 @@ from deepeval.synthesizer import Synthesizer
 from deepeval.synthesizer.config import EvolutionConfig, Evolution, StylingConfig, FiltrationConfig
 from src.config import get_model
 
+import json
+from pathlib import Path
+
 class DatasetGenerator:
     def __init__(self):
         self.model = get_model()
+        
+        # Load config
+        config_path = Path(__file__).parent.parent / "data" / "generation_config.json"
+        
+        # Default config
+        config_data = {
+            "task": "Expert Customer Support",
+            "scenario": "A customer interacting with an automated assistant.",
+            "input_format": "Professional and specific queries",
+            "expected_output_format": "Detailed responses with citations",
+            "reasoning_weight": 0.5,
+            "multicontext_weight": 0.5
+        }
+        
+        if config_path.exists():
+            try:
+                with open(config_path, "r") as f:
+                    file_config = json.load(f)
+                    config_data.update(file_config)
+            except Exception as e:
+                print(f"Error loading config: {e}")
+        else:
+            # Save default config
+            try:
+                with open(config_path, "w") as f:
+                    json.dump(config_data, f, indent=2)
+            except:
+                pass
+
         self.evolution_config = EvolutionConfig(
-            evolutions={Evolution.REASONING: 0.5, Evolution.MULTICONTEXT: 0.5},
+            evolutions={
+                Evolution.REASONING: config_data.get("reasoning_weight", 0.5),
+                Evolution.MULTICONTEXT: config_data.get("multicontext_weight", 0.5)
+            },
             num_evolutions=2
         )
         self.styling_config = StylingConfig(
-            task="Expert Customer Support",
-            scenario="A customer interacting with an automated assistant.",
-            input_format="Professional and specific queries",
-            expected_output_format="Detailed responses with citations"
+            task=config_data.get("task", "Expert Customer Support"),
+            scenario=config_data.get("scenario", "A customer interacting with an automated assistant."),
+            input_format=config_data.get("input_format", "Professional and specific queries"),
+            expected_output_format=config_data.get("expected_output_format", "Detailed responses with citations")
         )
         self.synthesizer = Synthesizer(
             model=self.model,

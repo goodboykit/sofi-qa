@@ -49,6 +49,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+from fastapi.staticfiles import StaticFiles
+
+# ... existing imports ...
+
 # CORS for React frontend
 app.add_middleware(
     CORSMiddleware,
@@ -57,6 +61,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Serve static files (documents)
+app.mount("/files", StaticFiles(directory=SOURCE_DOCS_DIR), name="files")
 
 
 # ============ Pydantic Models ============
@@ -79,6 +86,42 @@ class JobStatus(BaseModel):
     message: str
     result: Optional[dict] = None
 
+
+class ConfigUpdate(BaseModel):
+    task: str
+    scenario: str
+    input_format: str
+    expected_output_format: str
+    reasoning_weight: float
+    multicontext_weight: float
+
+
+# ============ Config Endpoints ============
+
+@app.get("/api/config")
+async def get_config():
+    """Get current generation configuration."""
+    config_path = DATA_DIR / "generation_config.json"
+    if config_path.exists():
+        with open(config_path, "r") as f:
+            return json.load(f)
+    return {
+        "task": "Expert Customer Support",
+        "scenario": "A customer interacting with an automated assistant.",
+        "input_format": "Professional and specific queries",
+        "expected_output_format": "Detailed responses with citations",
+        "reasoning_weight": 0.5,
+        "multicontext_weight": 0.5
+    }
+
+
+@app.post("/api/config")
+async def update_config(config: ConfigUpdate):
+    """Update generation configuration."""
+    config_path = DATA_DIR / "generation_config.json"
+    with open(config_path, "w") as f:
+        json.dump(config.dict(), f, indent=2)
+    return {"message": "Configuration updated successfully"}
 
 # ============ Document Endpoints ============
 
@@ -309,6 +352,33 @@ async def delete_golden(golden_type: str, golden_id: int):
         json.dump(data, f, indent=2)
     
     return {"message": "Golden deleted", "deleted": deleted}
+
+
+
+# ============ Data Access ============
+
+@app.get("/api/data/{data_type}")
+async def get_synthetic_data(data_type: str):
+    """
+    Retrieve generated synthetic data.
+    data_type: 'single-turn' or 'multi-turn'
+    """
+    if data_type not in ["single-turn", "multi-turn"]:
+        raise HTTPException(status_code=400, detail="Invalid data type. Use 'single-turn' or 'multi-turn'.")
+    
+    filename = "single_turn_goldens.json" if data_type == "single-turn" else "multi_turn_goldens.json"
+    file_path = SYNTHETIC_DATA_DIR / filename
+    
+    if not file_path.exists():
+        return []
+    
+    try:
+        with open(file_path, "r") as f:
+            data = json.load(f)
+        return data
+    except Exception as e:
+        print(f"Error reading {filename}: {e}")
+        return []
 
 
 # ============ Health Check ============
