@@ -26,12 +26,32 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # Check if virtual environment exists
 if [ ! -d "$SCRIPT_DIR/.venv" ]; then
     echo -e "${YELLOW}⚠️  Virtual environment not found. Creating one...${NC}"
-    python3 -m venv "$SCRIPT_DIR/.venv"
-    source "$SCRIPT_DIR/.venv/bin/activate"
-    pip install -r "$SCRIPT_DIR/requirements.txt"
+    
+    # Check for python command
+    if command -v python3 &>/dev/null; then
+        PYTHON_CMD="python3"
+    else
+        PYTHON_CMD="python"
+    fi
+    
+    $PYTHON_CMD -m venv "$SCRIPT_DIR/.venv"
+fi
+
+# Activate virtual environment (OS aware)
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then
+    # Windows
+    if [ -f "$SCRIPT_DIR/.venv/Scripts/activate" ]; then
+        source "$SCRIPT_DIR/.venv/Scripts/activate"
+    else
+        source "$SCRIPT_DIR/.venv/bin/activate"
+    fi
 else
+    # Linux/Mac
     source "$SCRIPT_DIR/.venv/bin/activate"
 fi
+
+# Install requirements
+pip install -r "$SCRIPT_DIR/requirements.txt"
 
 # Check if node_modules exists in frontend
 if [ ! -d "$SCRIPT_DIR/frontend/node_modules" ]; then

@@ -25,7 +25,7 @@ class DatasetGenerator:
         
         if config_path.exists():
             try:
-                with open(config_path, "r") as f:
+                with open(config_path, "r", encoding="utf-8") as f:
                     file_config = json.load(f)
                     config_data.update(file_config)
             except Exception as e:
@@ -33,7 +33,7 @@ class DatasetGenerator:
         else:
             # Save default config
             try:
-                with open(config_path, "w") as f:
+                with open(config_path, "w", encoding="utf-8") as f:
                     json.dump(config_data, f, indent=2)
             except:
                 pass

@@ -41,10 +41,16 @@ SoFi-QA is a powerful, production-ready tool designed to transform unstructured 
 
 ### Running the Application
 
-We provide a convenient script to start both the Backend and Frontend simultaneously:
+We provide convenient scripts to start both the Backend and Frontend simultaneously:
 
+**Mac/Linux:**
 ```bash
 ./run.sh
+```
+
+**Windows (PowerShell):**
+```powershell
+./run.ps1
 ```
 
 This script will:

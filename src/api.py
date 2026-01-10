@@ -103,7 +103,7 @@ async def get_config():
     """Get current generation configuration."""
     config_path = DATA_DIR / "generation_config.json"
     if config_path.exists():
-        with open(config_path, "r") as f:
+        with open(config_path, "r", encoding="utf-8") as f:
             return json.load(f)
     return {
         "task": "Expert Customer Support",
@@ -119,7 +119,7 @@ async def get_config():
 async def update_config(config: ConfigUpdate):
     """Update generation configuration."""
     config_path = DATA_DIR / "generation_config.json"
-    with open(config_path, "w") as f:
+    with open(config_path, "w", encoding="utf-8") as f:
         json.dump(config.dict(), f, indent=2)
     return {"message": "Configuration updated successfully"}
 
@@ -197,7 +197,7 @@ def run_synthesis_job(job_id: str, document_paths: List[str], synthesis_type: st
         
         # Load results
         if result_file.exists():
-            with open(result_file) as f:
+            with open(result_file, "r", encoding="utf-8") as f:
                 goldens = json.load(f)
             synthesis_jobs[job_id]["result"] = {"count": len(goldens), "type": synthesis_type}
         
@@ -281,12 +281,12 @@ async def list_goldens():
     multi_file = SYNTHETIC_DATA_DIR / "multi_turn_goldens.json"
     
     if single_file.exists():
-        with open(single_file) as f:
+        with open(single_file, "r", encoding="utf-8") as f:
             data = json.load(f)
             result["single_turn"] = [{"id": i, **g} for i, g in enumerate(data)]
     
     if multi_file.exists():
-        with open(multi_file) as f:
+        with open(multi_file, "r", encoding="utf-8") as f:
             data = json.load(f)
             result["multi_turn"] = [{"id": i, **g} for i, g in enumerate(data)]
     
@@ -303,7 +303,7 @@ async def get_goldens_by_type(golden_type: str):
     if not file_path.exists():
         return {"goldens": []}
     
-    with open(file_path) as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         data = json.load(f)
     
     return {"goldens": [{"id": i, **g} for i, g in enumerate(data)]}
@@ -316,7 +316,7 @@ async def update_golden(golden_type: str, golden_id: int, update: GoldenUpdate):
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Goldens file not found")
     
-    with open(file_path) as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         data = json.load(f)
     
     if golden_id < 0 or golden_id >= len(data):
@@ -327,7 +327,7 @@ async def update_golden(golden_type: str, golden_id: int, update: GoldenUpdate):
     if update.expected_output is not None:
         data[golden_id]["expected_output"] = update.expected_output
     
-    with open(file_path, "w") as f:
+    with open(file_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
     
     return {"message": "Golden updated", "golden": data[golden_id]}
@@ -340,7 +340,7 @@ async def delete_golden(golden_type: str, golden_id: int):
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Goldens file not found")
     
-    with open(file_path) as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         data = json.load(f)
     
     if golden_id < 0 or golden_id >= len(data):
@@ -348,7 +348,7 @@ async def delete_golden(golden_type: str, golden_id: int):
     
     deleted = data.pop(golden_id)
     
-    with open(file_path, "w") as f:
+    with open(file_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
     
     return {"message": "Golden deleted", "deleted": deleted}
@@ -373,7 +373,7 @@ async def get_synthetic_data(data_type: str):
         return []
     
     try:
-        with open(file_path, "r") as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
         return data
     except Exception as e:
