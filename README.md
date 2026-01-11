@@ -88,6 +88,7 @@ sofi-qa/
 │   ├── processor.py         # Helper that talks to the AI model
 │   └── config.py            # Loads your API key and AI settings
 ├── tests/                   # Test files for checking if things work
+│   ├── __init__.py          # Makes this folder a Python package
 │   └── test_evaluation.py   # Runs quality checks on generated data
 ├── main.py                  # Run this to generate data without the website
 ├── requirements.txt         # List of Python tools we need

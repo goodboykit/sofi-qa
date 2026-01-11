@@ -381,6 +381,96 @@ async def get_synthetic_data(data_type: str):
         return []
 
 
+# ============ Evaluation Endpoints ============
+
+evaluation_jobs = {}
+
+def run_evaluation_job(job_id: str):
+    """Background task for running pytest evaluation."""
+    import subprocess
+    import re
+    
+    try:
+        evaluation_jobs[job_id]["status"] = "running"
+        evaluation_jobs[job_id]["message"] = "Running tests..."
+        
+        # Run pytest with verbose output
+        result = subprocess.run(
+            ["pytest", "tests/", "-v", "--tb=short"],
+            capture_output=True,
+            text=True,
+            cwd=str(BASE_DIR),
+            timeout=300
+        )
+        
+        output = result.stdout + result.stderr
+        
+        # Parse test results
+        tests = []
+        for line in output.split('\n'):
+            if '::test_' in line:
+                if 'PASSED' in line:
+                    test_name = re.search(r'test_\w+\[?\w*\]?', line)
+                    tests.append({"name": test_name.group() if test_name else line, "status": "passed"})
+                elif 'FAILED' in line:
+                    test_name = re.search(r'test_\w+\[?\w*\]?', line)
+                    tests.append({"name": test_name.group() if test_name else line, "status": "failed"})
+        
+        # Get summary
+        passed = len([t for t in tests if t["status"] == "passed"])
+        failed = len([t for t in tests if t["status"] == "failed"])
+        
+        evaluation_jobs[job_id]["status"] = "completed"
+        evaluation_jobs[job_id]["progress"] = 100
+        evaluation_jobs[job_id]["message"] = f"Completed: {passed} passed, {failed} failed"
+        evaluation_jobs[job_id]["result"] = {
+            "tests": tests,
+            "passed": passed,
+            "failed": failed,
+            "total": passed + failed,
+            "output": output[-2000:] if len(output) > 2000 else output  # Last 2000 chars
+        }
+        
+    except subprocess.TimeoutExpired:
+        evaluation_jobs[job_id]["status"] = "failed"
+        evaluation_jobs[job_id]["message"] = "Tests timed out after 5 minutes"
+    except Exception as e:
+        evaluation_jobs[job_id]["status"] = "failed"
+        evaluation_jobs[job_id]["message"] = str(e)
+
+
+@app.post("/api/evaluation/start")
+async def start_evaluation(background_tasks: BackgroundTasks):
+    """Start an evaluation job."""
+    # Check if synthetic data exists
+    single_file = SYNTHETIC_DATA_DIR / "single_turn_goldens.json"
+    multi_file = SYNTHETIC_DATA_DIR / "multi_turn_goldens.json"
+    
+    if not single_file.exists() and not multi_file.exists():
+        raise HTTPException(status_code=400, detail="No synthetic data found. Run synthesis first.")
+    
+    job_id = str(uuid.uuid4())[:8]
+    evaluation_jobs[job_id] = {
+        "job_id": job_id,
+        "status": "pending",
+        "progress": 0,
+        "message": "Starting evaluation...",
+        "result": None
+    }
+    
+    background_tasks.add_task(run_evaluation_job, job_id)
+    
+    return {"job_id": job_id, "message": "Evaluation started"}
+
+
+@app.get("/api/evaluation/status/{job_id}")
+async def get_evaluation_status(job_id: str):
+    """Get evaluation job status."""
+    if job_id not in evaluation_jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return evaluation_jobs[job_id]
+
+
 # ============ Health Check ============
 
 @app.get("/api/health")
