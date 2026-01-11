@@ -9,11 +9,12 @@ SoFi-QA is a tool that helps you turn your documents (like PDFs or Word files) i
 ## ✨ Features
 
 - **📄 File Manager**: Upload and organize your PDF and DOCX files.
-- **🤖 Smart AI**: Creates **Q&A pairs** and **Conversations** automatically.
+- **🤖 Smart AI**: Creates **Q&A pairs** and **Conversations** automatically using GPT-4.1-mini.
 - **⚙️ Easy Settings**: Change how the AI thinks and writes with simple controls.
 - **🖥️ Cool Design**: A modern, dark-themed dashboard that is easy to use.
 - **💬 Chat View**: See your data look like real text messages (User vs Bot).
 - **🔍 Check Context**: See exactly what part of your document the AI used.
+- **🧪 Built-in Tests**: Run tests to check if the AI answers are good.
 
 ---
 
@@ -34,9 +35,13 @@ SoFi-QA is a tool that helps you turn your documents (like PDFs or Word files) i
     ```
 
 2.  **Set Your Password (API Key)**
-    Make sure you tell your computer your OpenAI password.
-    *Mac/Linux*: `export OPENAI_API_KEY="sk-..."`
-    *Windows*: `$env:OPENAI_API_KEY="sk-..."`
+    Create a file called `.env` in the main folder and put this inside:
+    ```
+    OPENAI_API_KEY=sk-your-key-here
+    ```
+    Or set it in your terminal:
+    - *Mac/Linux*: `export OPENAI_API_KEY="sk-..."`
+    - *Windows*: `$env:OPENAI_API_KEY="sk-..."`
 
 ### ▶️ Running the App
 
@@ -58,8 +63,8 @@ Type this in PowerShell:
 1. The computer creates a special folder for Python stuff (`.venv`).
 2. It installs all the Python tools it needs.
 3. It runs `npm install` to download **React**, **Vite**, and **Axios** (this builds the website).
-4. It starts the **Backend server** (the brain).
-5. It starts the **Frontend website** (what you see).
+4. It starts the **Backend server** (the brain) on port `8000`.
+5. It starts the **Frontend website** (what you see) on port `5173`.
 6. Open your browser to `http://localhost:5173` to start!
 
 ---
@@ -68,6 +73,7 @@ Type this in PowerShell:
 
 ```text
 sofi-qa/
+├── .env                     # Your secret API key lives here (do NOT share this!)
 ├── data/                    # Where your files live
 │   ├── source_docs/         # The PDFs you upload go here
 │   ├── synthetic_data/      # The Q&A answers go here
@@ -79,8 +85,10 @@ sofi-qa/
 ├── src/                     # The brain folder (Python)
 │   ├── api.py               # Connects the website to the brain
 │   ├── synthesizer.py       # Where the AI magic happens
-│   └── config.py            # Settings file
+│   ├── processor.py         # Helper that talks to the AI model
+│   └── config.py            # Loads your API key and AI settings
 ├── tests/                   # Test files for checking if things work
+│   └── test_evaluation.py   # Runs quality checks on generated data
 ├── main.py                  # Run this to generate data without the website
 ├── requirements.txt         # List of Python tools we need
 ├── run.sh                   # Start button for Mac/Linux
@@ -102,11 +110,28 @@ sofi-qa/
 
 ---
 
+## 🧪 Running Tests
+
+After you generate data, you can check if the AI did a good job:
+
+```bash
+# Make sure you are in the project folder and venv is active
+pytest tests/ -v
+```
+
+This will test:
+- **Answer Relevancy**: Is the answer related to the question?
+- **Faithfulness**: Is the answer true to the source document?
+- **Conversation Quality**: Does the bot sound professional?
+
+---
+
 ## 🔧 Fixing Problems
 
 -   **Won't Connect?** Make sure you don't have another program using port `8000`.
 -   **Stuck at 0%?** Check if your API Key is correct and has money on it.
 -   **Website looks weird?** Refresh the page (Cmd+Shift+R or Ctrl+Shift+R).
+-   **Tests failing?** Make sure you have data in `data/synthetic_data/` first.
 
 ---
 
