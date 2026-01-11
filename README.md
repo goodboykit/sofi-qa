@@ -55,11 +55,12 @@ Type this in PowerShell:
 ```
 
 **What happens next?**
-1. The computer creates a special folder for Python stuff.
-2. It installs all the tools it needs.
-3. It starts the **Backend server** (the brain).
-4. It starts the **Frontend website** (what you see).
-5. Open your browser to `http://localhost:5173` to start!
+1. The computer creates a special folder for Python stuff (`.venv`).
+2. It installs all the Python tools it needs.
+3. It runs `npm install` to download **React**, **Vite**, and **Axios** (this builds the website).
+4. It starts the **Backend server** (the brain).
+5. It starts the **Frontend website** (what you see).
+6. Open your browser to `http://localhost:5173` to start!
 
 ---
 
@@ -79,8 +80,11 @@ sofi-qa/
 │   ├── api.py               # Connects the website to the brain
 │   ├── synthesizer.py       # Where the AI magic happens
 │   └── config.py            # Settings file
-├── requirements.txt         # List of tools we need
-└── run.sh                   # The start button
+├── tests/                   # Test files for checking if things work
+├── main.py                  # Run this to generate data without the website
+├── requirements.txt         # List of Python tools we need
+├── run.sh                   # Start button for Mac/Linux
+└── run.ps1                  # Start button for Windows
 ```
 
 ---
