@@ -108,19 +108,28 @@ sofi-qa/
     - Click **Single-Turn** for simple Q&A.
     - Click **Multi-Turn** for full conversations.
     - Click **View Context** to see where the answer came from.
+5.  **Test Quality**: Go to **Evaluation** and click **Run Tests** to check if your data is good.
 
 ---
 
-## 🧪 Running Tests
+## 🧪 Evaluation (Quality Testing)
 
-After you generate data, you can check if the AI did a good job:
+You can check if your generated Q&A is good in two ways:
 
+### Option 1: Using the Website (Easy!)
+1. Go to the **Evaluation** tab in the sidebar.
+2. Click the green **Run Tests** button.
+3. Watch the live output as tests run (just like a terminal!).
+4. See the results with green ✓ for passed and red ✗ for failed.
+5. Click **Stop** anytime if you want to cancel.
+
+### Option 2: Using the Terminal
 ```bash
 # Make sure you are in the project folder and venv is active
 pytest tests/ -v
 ```
 
-This will test:
+**What gets tested?**
 - **Answer Relevancy**: Is the answer related to the question?
 - **Faithfulness**: Is the answer true to the source document?
 - **Conversation Quality**: Does the bot sound professional?
@@ -133,6 +142,7 @@ This will test:
 -   **Stuck at 0%?** Check if your API Key is correct and has money on it.
 -   **Website looks weird?** Refresh the page (Cmd+Shift+R or Ctrl+Shift+R).
 -   **Tests failing?** Make sure you have data in `data/synthetic_data/` first.
+-   **Evaluation won't start?** Generate data with Synthesis first before running tests.
 
 ---
 

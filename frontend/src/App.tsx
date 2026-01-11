@@ -89,6 +89,13 @@ const Icons = {
       <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
       <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
     </svg>
+  ),
+  beaker: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4.5 3h15" />
+      <path d="M6 3v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V3" />
+      <path d="M6 14h12" />
+    </svg>
   )
 };
 
@@ -117,7 +124,20 @@ interface Document {
   type: string;
 }
 
-type Page = 'synthesis' | 'documents' | 'configuration' | 'data';
+interface EvalTest {
+  name: string;
+  status: 'passed' | 'failed';
+}
+
+interface EvalResult {
+  tests: EvalTest[];
+  passed: number;
+  failed: number;
+  total: number;
+  output: string;
+}
+
+type Page = 'synthesis' | 'documents' | 'configuration' | 'data' | 'evaluation';
 
 // ============================================
 // App
@@ -141,6 +161,14 @@ function App() {
   const currentJobIds = useRef<string[]>([]);
   const shouldStop = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Evaluation state
+  const [evalRunning, setEvalRunning] = useState(false);
+  const [evalResult, setEvalResult] = useState<EvalResult | null>(null);
+  const [evalMessage, setEvalMessage] = useState('');
+  const [evalLogs, setEvalLogs] = useState<string[]>([]);
+  const evalConsoleRef = useRef<HTMLDivElement>(null);
+  const evalEventSourceRef = useRef<EventSource | null>(null);
 
   // Loading screen timer
   useEffect(() => {
@@ -546,6 +574,14 @@ function App() {
                 {Icons.database}
                 <span className="nav-text">Data</span>
               </button>
+              <button
+                className={`nav-item ${currentPage === 'evaluation' ? 'active' : ''}`}
+                onClick={() => setCurrentPage('evaluation')}
+              >
+                {Icons.beaker}
+                <span className="nav-text">Evaluation</span>
+                {evalRunning && <span className="nav-badge pulse" />}
+              </button>
             </nav>
             <div className="sidebar-footer">
               <div className="status-mini">
@@ -561,7 +597,7 @@ function App() {
             <header className="header">
               <div className="brand">
                 <span className="brand-tag">
-                  {currentPage === 'synthesis' ? 'QA Synthesis' : currentPage === 'documents' ? 'Documents' : currentPage === 'data' ? 'Synthetic Data' : 'Configuration'}
+                  {currentPage === 'synthesis' ? 'QA Synthesis' : currentPage === 'documents' ? 'Documents' : currentPage === 'data' ? 'Synthetic Data' : currentPage === 'evaluation' ? 'Evaluation' : 'Configuration'}
                 </span>
               </div>
               <div className="status">
@@ -927,6 +963,261 @@ function App() {
                     )}
                   </div>
                 </div>
+              </main>
+            )}
+
+            {/* Evaluation Page */}
+            {currentPage === 'evaluation' && (
+              <main className="main">
+                {/* Hero */}
+                <div className="hero-card">
+                  <div className="hero-content">
+                    <h1 className="hero-title">Run <span>Quality Tests</span></h1>
+                    <p className="hero-desc">
+                      Check if your generated Q&A pairs are relevant and faithful to the source documents.
+                    </p>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => {
+                        if (status !== 'online') {
+                          setEvalMessage('Backend not available');
+                          return;
+                        }
+                        setEvalRunning(true);
+                        setEvalResult(null);
+                        setEvalLogs([]);
+                        setEvalMessage('Connecting...');
+
+                        const eventSource = new EventSource('http://localhost:8000/api/evaluation/stream');
+                        evalEventSourceRef.current = eventSource;
+
+                        eventSource.addEventListener('log', (e) => {
+                          setEvalLogs(prev => [...prev, e.data]);
+                          setEvalMessage('Running tests...');
+                          // Auto-scroll
+                          if (evalConsoleRef.current) {
+                            evalConsoleRef.current.scrollTop = evalConsoleRef.current.scrollHeight;
+                          }
+                        });
+
+                        eventSource.addEventListener('test', (e) => {
+                          const test = JSON.parse(e.data);
+                          setEvalLogs(prev => [...prev, `${test.status === 'passed' ? '✓' : '✗'} ${test.name}`]);
+                        });
+
+                        eventSource.addEventListener('complete', (e) => {
+                          const result = JSON.parse(e.data);
+                          setEvalResult(result);
+                          setEvalMessage(`Completed: ${result.passed} passed, ${result.failed} failed`);
+                          setEvalRunning(false);
+                          evalEventSourceRef.current = null;
+                          eventSource.close();
+                        });
+
+                        eventSource.addEventListener('error', (e: any) => {
+                          if (e.data) {
+                            setEvalMessage(`Error: ${e.data}`);
+                          } else {
+                            setEvalMessage('Connection closed');
+                          }
+                          setEvalRunning(false);
+                          evalEventSourceRef.current = null;
+                          eventSource.close();
+                        });
+
+                        eventSource.onerror = () => {
+                          setEvalMessage('Connection error');
+                          setEvalRunning(false);
+                          evalEventSourceRef.current = null;
+                          eventSource.close();
+                        };
+                      }}
+                      disabled={evalRunning || status !== 'online'}
+                    >
+                      {Icons.beaker}
+                      Run Tests
+                    </button>
+                    {evalRunning && (
+                      <button
+                        className="btn btn-danger"
+                        onClick={() => {
+                          if (evalEventSourceRef.current) {
+                            evalEventSourceRef.current.close();
+                            evalEventSourceRef.current = null;
+                          }
+                          setEvalRunning(false);
+                          setEvalMessage('Stopped by user');
+                          setEvalLogs(prev => [...prev, '--- Test run stopped by user ---']);
+                        }}
+                      >
+                        {Icons.stop}
+                        Stop
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Console Output */}
+                <div className="console-card">
+                  <div className="console-header">
+                    <span className="console-title">Test Output</span>
+                    <span className="console-meta">{evalLogs.length} lines • {evalMessage || 'Ready'}</span>
+                  </div>
+                  <div className="console-body" ref={evalConsoleRef} style={{ minHeight: '200px', maxHeight: '350px' }}>
+                    {evalLogs.length === 0 && !evalRunning ? (
+                      <div className="empty">
+                        <span className="empty-icon">{Icons.beaker}</span>
+                        <span className="empty-title">No tests run yet</span>
+                        <span className="empty-desc">Click Run Tests to start evaluation</span>
+                      </div>
+                    ) : (
+                      <div style={{ padding: '8px 12px', fontFamily: "'Poppins', sans-serif", fontSize: '13px', lineHeight: 1.7 }}>
+                        {evalLogs.map((line, idx) => {
+                          const isPassed = line.includes('PASSED') || line.startsWith('✓');
+                          const isFailed = line.includes('FAILED') || line.startsWith('✗');
+                          const isHeader = line.startsWith('===');
+                          return (
+                            <div
+                              key={idx}
+                              style={{
+                                color: isPassed ? '#4ade80' : isFailed ? '#f87171' : isHeader ? 'var(--accent)' : 'var(--text-secondary)',
+                                fontWeight: isHeader ? 600 : 400
+                              }}
+                            >
+                              {line}
+                            </div>
+                          );
+                        })}
+                        {evalRunning && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', color: 'var(--accent)' }}>
+                            <span style={{
+                              width: '14px',
+                              height: '14px',
+                              border: '2px solid rgba(255,255,255,0.2)',
+                              borderTopColor: 'var(--accent)',
+                              borderRadius: '50%',
+                              animation: 'spin 1s linear infinite'
+                            }} />
+                            <span>Running...</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Results */}
+                {evalResult && (
+                  <div style={{ marginTop: '24px' }}>
+                    {/* Summary Cards */}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(3, 1fr)',
+                      gap: '16px',
+                      marginBottom: '24px'
+                    }}>
+                      <div style={{
+                        padding: '20px 24px',
+                        background: 'linear-gradient(135deg, rgba(74, 222, 128, 0.15) 0%, rgba(74, 222, 128, 0.05) 100%)',
+                        borderRadius: '12px',
+                        border: '1px solid rgba(74, 222, 128, 0.3)',
+                        textAlign: 'center'
+                      }}>
+                        <div style={{ fontSize: '32px', fontWeight: 700, color: '#4ade80', marginBottom: '4px' }}>
+                          {evalResult.passed}
+                        </div>
+                        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                          Passed
+                        </div>
+                      </div>
+                      <div style={{
+                        padding: '20px 24px',
+                        background: 'linear-gradient(135deg, rgba(248, 113, 113, 0.15) 0%, rgba(248, 113, 113, 0.05) 100%)',
+                        borderRadius: '12px',
+                        border: '1px solid rgba(248, 113, 113, 0.3)',
+                        textAlign: 'center'
+                      }}>
+                        <div style={{ fontSize: '32px', fontWeight: 700, color: '#f87171', marginBottom: '4px' }}>
+                          {evalResult.failed}
+                        </div>
+                        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                          Failed
+                        </div>
+                      </div>
+                      <div style={{
+                        padding: '20px 24px',
+                        background: 'var(--glass)',
+                        borderRadius: '12px',
+                        border: '1px solid var(--border)',
+                        textAlign: 'center'
+                      }}>
+                        <div style={{ fontSize: '32px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                          {evalResult.total}
+                        </div>
+                        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                          Total Tests
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Test List */}
+                    <div className="documents-card">
+                      <div className="documents-header">
+                        <span className="documents-title">Test Results</span>
+                        <span className="documents-count">{evalResult.tests.length} tests</span>
+                      </div>
+                      <div className="documents-body" style={{ padding: '12px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          {evalResult.tests.map((test, idx) => (
+                            <div
+                              key={idx}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '14px',
+                                padding: '14px 18px',
+                                background: test.status === 'passed' ? 'rgba(74, 222, 128, 0.08)' : 'rgba(248, 113, 113, 0.08)',
+                                borderRadius: '10px',
+                                border: `1px solid ${test.status === 'passed' ? 'rgba(74, 222, 128, 0.25)' : 'rgba(248, 113, 113, 0.25)'}`,
+                                transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+                              }}
+                            >
+                              <span style={{
+                                color: test.status === 'passed' ? '#4ade80' : '#f87171',
+                                width: '22px',
+                                height: '22px',
+                                flexShrink: 0
+                              }}>
+                                {test.status === 'passed' ? Icons.check : Icons.x}
+                              </span>
+                              <span style={{
+                                flex: 1,
+                                fontFamily: "'Poppins', sans-serif",
+                                fontSize: '14px',
+                                fontWeight: 500,
+                                color: 'var(--text-primary)'
+                              }}>
+                                {test.name}
+                              </span>
+                              <span style={{
+                                padding: '6px 12px',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                                background: test.status === 'passed' ? 'rgba(74, 222, 128, 0.2)' : 'rgba(248, 113, 113, 0.2)',
+                                color: test.status === 'passed' ? '#4ade80' : '#f87171'
+                              }}>
+                                {test.status}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </main>
             )}
 

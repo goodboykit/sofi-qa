@@ -471,6 +471,75 @@ async def get_evaluation_status(job_id: str):
     return evaluation_jobs[job_id]
 
 
+@app.get("/api/evaluation/stream")
+async def stream_evaluation():
+    """Stream pytest output in real-time using SSE."""
+    import subprocess
+    import re
+    import sys
+    
+    async def event_generator():
+        # Check if synthetic data exists
+        single_file = SYNTHETIC_DATA_DIR / "single_turn_goldens.json"
+        multi_file = SYNTHETIC_DATA_DIR / "multi_turn_goldens.json"
+        
+        if not single_file.exists() and not multi_file.exists():
+            yield {"event": "error", "data": "No synthetic data found. Run synthesis first."}
+            return
+        
+        yield {"event": "log", "data": "Starting pytest..."}
+        
+        # Use sys.executable to find pytest in the current venv (works on Windows & Mac/Linux)
+        process = subprocess.Popen(
+            [sys.executable, "-m", "pytest", "tests/", "-v", "--tb=short", "-x"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            cwd=str(BASE_DIR),
+            env={**os.environ, "PYTHONUNBUFFERED": "1"}
+        )
+        
+        tests = []
+        
+        # Stream output line by line
+        for line in iter(process.stdout.readline, ''):
+            if not line:
+                break
+            
+            line = line.rstrip()
+            
+            # Parse test results
+            if '::test_' in line:
+                if 'PASSED' in line:
+                    test_name = re.search(r'test_\w+\[?\w*\]?', line)
+                    tests.append({"name": test_name.group() if test_name else line, "status": "passed"})
+                    yield {"event": "test", "data": json.dumps({"name": test_name.group() if test_name else line, "status": "passed"})}
+                elif 'FAILED' in line:
+                    test_name = re.search(r'test_\w+\[?\w*\]?', line)
+                    tests.append({"name": test_name.group() if test_name else line, "status": "failed"})
+                    yield {"event": "test", "data": json.dumps({"name": test_name.group() if test_name else line, "status": "failed"})}
+            
+            # Send log line
+            yield {"event": "log", "data": line}
+            await asyncio.sleep(0.01)  # Small delay to prevent overwhelming
+        
+        process.wait()
+        
+        # Send summary
+        passed = len([t for t in tests if t["status"] == "passed"])
+        failed = len([t for t in tests if t["status"] == "failed"])
+        
+        yield {"event": "complete", "data": json.dumps({
+            "tests": tests,
+            "passed": passed,
+            "failed": failed,
+            "total": passed + failed
+        })}
+    
+    return EventSourceResponse(event_generator())
+
+
 # ============ Health Check ============
 
 @app.get("/api/health")
