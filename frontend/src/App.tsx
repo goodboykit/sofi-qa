@@ -976,84 +976,86 @@ function App() {
                     <p className="hero-desc">
                       Check if your generated Q&A pairs are relevant and faithful to the source documents.
                     </p>
-                    <button
-                      className="btn btn-primary"
-                      onClick={() => {
-                        if (status !== 'online') {
-                          setEvalMessage('Backend not available');
-                          return;
-                        }
-                        setEvalRunning(true);
-                        setEvalResult(null);
-                        setEvalLogs([]);
-                        setEvalMessage('Connecting...');
-
-                        const eventSource = new EventSource('http://localhost:8000/api/evaluation/stream');
-                        evalEventSourceRef.current = eventSource;
-
-                        eventSource.addEventListener('log', (e) => {
-                          setEvalLogs(prev => [...prev, e.data]);
-                          setEvalMessage('Running tests...');
-                          // Auto-scroll
-                          if (evalConsoleRef.current) {
-                            evalConsoleRef.current.scrollTop = evalConsoleRef.current.scrollHeight;
-                          }
-                        });
-
-                        eventSource.addEventListener('test', (e) => {
-                          const test = JSON.parse(e.data);
-                          setEvalLogs(prev => [...prev, `${test.status === 'passed' ? '✓' : '✗'} ${test.name}`]);
-                        });
-
-                        eventSource.addEventListener('complete', (e) => {
-                          const result = JSON.parse(e.data);
-                          setEvalResult(result);
-                          setEvalMessage(`Completed: ${result.passed} passed, ${result.failed} failed`);
-                          setEvalRunning(false);
-                          evalEventSourceRef.current = null;
-                          eventSource.close();
-                        });
-
-                        eventSource.addEventListener('error', (e: any) => {
-                          if (e.data) {
-                            setEvalMessage(`Error: ${e.data}`);
-                          } else {
-                            setEvalMessage('Connection closed');
-                          }
-                          setEvalRunning(false);
-                          evalEventSourceRef.current = null;
-                          eventSource.close();
-                        });
-
-                        eventSource.onerror = () => {
-                          setEvalMessage('Connection error');
-                          setEvalRunning(false);
-                          evalEventSourceRef.current = null;
-                          eventSource.close();
-                        };
-                      }}
-                      disabled={evalRunning || status !== 'online'}
-                    >
-                      {Icons.beaker}
-                      Run Tests
-                    </button>
-                    {evalRunning && (
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                       <button
-                        className="btn btn-danger"
+                        className="btn btn-primary"
                         onClick={() => {
-                          if (evalEventSourceRef.current) {
-                            evalEventSourceRef.current.close();
-                            evalEventSourceRef.current = null;
+                          if (status !== 'online') {
+                            setEvalMessage('Backend not available');
+                            return;
                           }
-                          setEvalRunning(false);
-                          setEvalMessage('Stopped by user');
-                          setEvalLogs(prev => [...prev, '--- Test run stopped by user ---']);
+                          setEvalRunning(true);
+                          setEvalResult(null);
+                          setEvalLogs([]);
+                          setEvalMessage('Connecting...');
+
+                          const eventSource = new EventSource('http://localhost:8000/api/evaluation/stream');
+                          evalEventSourceRef.current = eventSource;
+
+                          eventSource.addEventListener('log', (e) => {
+                            setEvalLogs(prev => [...prev, e.data]);
+                            setEvalMessage('Running tests...');
+                            // Auto-scroll
+                            if (evalConsoleRef.current) {
+                              evalConsoleRef.current.scrollTop = evalConsoleRef.current.scrollHeight;
+                            }
+                          });
+
+                          eventSource.addEventListener('test', (e) => {
+                            const test = JSON.parse(e.data);
+                            setEvalLogs(prev => [...prev, `${test.status === 'passed' ? '✓' : '✗'} ${test.name}`]);
+                          });
+
+                          eventSource.addEventListener('complete', (e) => {
+                            const result = JSON.parse(e.data);
+                            setEvalResult(result);
+                            setEvalMessage(`Completed: ${result.passed} passed, ${result.failed} failed`);
+                            setEvalRunning(false);
+                            evalEventSourceRef.current = null;
+                            eventSource.close();
+                          });
+
+                          eventSource.addEventListener('error', (e: any) => {
+                            if (e.data) {
+                              setEvalMessage(`Error: ${e.data}`);
+                            } else {
+                              setEvalMessage('Connection closed');
+                            }
+                            setEvalRunning(false);
+                            evalEventSourceRef.current = null;
+                            eventSource.close();
+                          });
+
+                          eventSource.onerror = () => {
+                            setEvalMessage('Connection error');
+                            setEvalRunning(false);
+                            evalEventSourceRef.current = null;
+                            eventSource.close();
+                          };
                         }}
+                        disabled={evalRunning || status !== 'online'}
                       >
-                        {Icons.stop}
-                        Stop
+                        {Icons.beaker}
+                        Run Tests
                       </button>
-                    )}
+                      {evalRunning && (
+                        <button
+                          className="btn btn-danger"
+                          onClick={() => {
+                            if (evalEventSourceRef.current) {
+                              evalEventSourceRef.current.close();
+                              evalEventSourceRef.current = null;
+                            }
+                            setEvalRunning(false);
+                            setEvalMessage('Stopped by user');
+                            setEvalLogs(prev => [...prev, '--- Test run stopped by user ---']);
+                          }}
+                        >
+                          {Icons.stop}
+                          Stop
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
 
