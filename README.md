@@ -2,108 +2,107 @@
 
 > **Synthetic Question-Answering Data Generator** powered by DeepEval.
 
-SoFi-QA is a powerful, production-ready tool designed to transform unstructured documents (PDFs, DOCX) into high-quality, synthetic Q&A datasets. It features a modern, responsive React frontend tailored for easy configuration and real-time monitoring of synthesis jobs.
+SoFi-QA is a tool that helps you turn your documents (like PDFs or Word files) into high-quality Question & Answer datasets. It has a nice looking website that lets you control everything easily.
 
 ---
 
 ## ✨ Features
 
-- **📄 Document Management**: Upload, list, and manage PDF and DOCX source documents.
-- **🤖 AI-Powered Synthesis**: Generate both **Single-Turn** (Q&A) and **Multi-Turn** (Conversational) data.
-- **⚙️ Granular Configuration**: Fine-tune generation parameters like reasoning scripts, scenario descriptions, and evolution weights.
-- **🖥️ Modern UI**: A "Cosmic Glass" themed interface with real-time logs, progress bars, and responsive design.
-- **💬 Conversational Preview**: View generated data in a chat-like interface (User vs Bot) for easy validation.
-- **🔍 Context Retrieval**: Inspect the exact source context chunks used to generate each Q&A pair.
+- **📄 File Manager**: Upload and organize your PDF and DOCX files.
+- **🤖 Smart AI**: Creates **Q&A pairs** and **Conversations** automatically.
+- **⚙️ Easy Settings**: Change how the AI thinks and writes with simple controls.
+- **🖥️ Cool Design**: A modern, dark-themed dashboard that is easy to use.
+- **💬 Chat View**: See your data look like real text messages (User vs Bot).
+- **🔍 Check Context**: See exactly what part of your document the AI used.
 
 ---
 
-## 🚀 Getting Started
+## 🚀 How to Start
 
-### Prerequisites
+### What You Need First
 
-- **Python 3.10+**
-- **Node.js 18+** & **npm**
-- **OpenAI API Key** (or compatible LLM provider)
+- **Python** (version 3.10 or newer)
+- **Node.js** (for the website part)
+- **OpenAI API Key** (this is the password for the AI)
 
 ### Installation
 
-1.  **Clone the Repository**
+1.  **Download the Code**
     ```bash
     git clone https://github.com/your-username/sofi-qa.git
     cd sofi-qa
     ```
 
-2.  **Environment Setup**
-    Ensure you have your API key set:
-    ```bash
-    export OPENAI_API_KEY="sk-..."
-    ```
+2.  **Set Your Password (API Key)**
+    Make sure you tell your computer your OpenAI password.
+    *Mac/Linux*: `export OPENAI_API_KEY="sk-..."`
+    *Windows*: `$env:OPENAI_API_KEY="sk-..."`
 
-### Running the Application
+### ▶️ Running the App
 
-We provide convenient scripts to start both the Backend and Frontend simultaneously:
+We made it super easy to start. Just pick your computer type below:
 
-**Mac/Linux:**
+**🍎 If you are on Mac or Linux:**
+Type this in your terminal:
 ```bash
 ./run.sh
 ```
 
-**Windows (PowerShell):**
+**🪟 If you are on Windows:**
+Type this in PowerShell:
 ```powershell
 ./run.ps1
 ```
 
-This script will:
-1.  Create and activate a Python virtual environment (`.venv`).
-2.  Install Python dependencies from `requirements.txt`.
-3.  Install Frontend dependencies (if missing).
-4.  Launch the **FastAPI Backend** on `http://localhost:8000`.
-5.  Launch the **Vite Frontend** on `http://localhost:5173`.
+**What happens next?**
+1. The computer creates a special folder for Python stuff.
+2. It installs all the tools it needs.
+3. It starts the **Backend server** (the brain).
+4. It starts the **Frontend website** (what you see).
+5. Open your browser to `http://localhost:5173` to start!
 
 ---
 
-## 📂 Project Structure
+## 📂 Folders Explained
 
 ```text
 sofi-qa/
-├── data/                    # Persistent Data Storage
-│   ├── source_docs/         # Uploaded documents (PDF/DOCX)
-│   ├── synthetic_data/      # Generated JSON datasets
-│   └── generation_config.json
-├── frontend/                # React Application (Vite)
+├── data/                    # Where your files live
+│   ├── source_docs/         # The PDFs you upload go here
+│   ├── synthetic_data/      # The Q&A answers go here
+│   └── generation_config.json # Stores your AI settings
+├── frontend/                # The website folder
 │   ├── src/
-│   │   ├── App.tsx          # Main UI Component
-│   │   └── index.css        # Global Styles (Cosmic Theme)
-├── src/                     # Backend Logic
-│   ├── api.py               # FastAPI Server Endpoints
-│   ├── synthesizer.py       # DeepEval Wrapper & Logic
-│   └── config.py            # LLM Configuration
-├── scripts/                 # Utility Scripts
-│   └── run_batch.py         # CLI Tool for Batch Generation
-├── requirements.txt         # Python Dependencies
-└── run.sh                   # Startup Script
+│   │   ├── App.tsx          # The main website code
+│   │   └── index.css        # The colors and styles
+├── src/                     # The brain folder (Python)
+│   ├── api.py               # Connects the website to the brain
+│   ├── synthesizer.py       # Where the AI magic happens
+│   └── config.py            # Settings file
+├── requirements.txt         # List of tools we need
+└── run.sh                   # The start button
 ```
 
 ---
 
-## 🛠️ Usage Guide
+## 🛠️ How to Use It
 
-1.  **Upload Documents**: Go to the **Documents** tab and upload your knowledge base files.
-2.  **Configure**: Use the **Configuration** tab to set the `Task`, `Scenario`, and `Weights` for your synthesis.
-3.  **Generate**: Head to **Synthesis**, click **Start Synthesis**, and watch the logs in real-time.
-4.  **Review Data**:
-    - Open the **Data** tab to browse generated datasets.
-    - Toggle between **Single-Turn** and **Multi-Turn**.
-    - View results in a beautiful **Conversational Interface** (User Left / Bot Right).
-    - Expand **View Context** to verify source accuracy.
+1.  **Upload Files**: Click the **Documents** tab and drag your files there.
+2.  **Settings**: Go to **Configuration** if you want to change how the AI writes.
+3.  **Start**: Go to **Synthesis** and click **Start Synthesis**. Watch the blue bar go!
+4.  **See Results**:
+    - Go to the **Data** tab.
+    - Click **Single-Turn** for simple Q&A.
+    - Click **Multi-Turn** for full conversations.
+    - Click **View Context** to see where the answer came from.
 
 ---
 
-## 🔧 Troubleshooting
+## 🔧 Fixing Problems
 
--   **Backend not connecting?** Ensure port `8000` is free. Check logs in the terminal where `./run.sh` is running.
--   **Synthesis stuck?** Verify your `OPENAI_API_KEY` is valid and has sufficient credits.
--   **UI Glitches?** Hard refresh the page (`Cmd+Shift+R`) to clear cache often during development.
+-   **Won't Connect?** Make sure you don't have another program using port `8000`.
+-   **Stuck at 0%?** Check if your API Key is correct and has money on it.
+-   **Website looks weird?** Refresh the page (Cmd+Shift+R or Ctrl+Shift+R).
 
 ---
 
