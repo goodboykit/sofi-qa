@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from deepeval.synthesizer import Synthesizer
 from deepeval.synthesizer.config import EvolutionConfig, Evolution, StylingConfig, FiltrationConfig
 from src.config import get_model
@@ -8,7 +8,7 @@ import tempfile
 from pathlib import Path
 
 
-def convert_pdf_to_text(path: str) -> str:
+def convert_pdf_to_text(path: str) -> Optional[str]:
     """
     Fallback: Convert a PDF to text using pdfplumber.
     Returns the path to the text file, or None if conversion fails.
@@ -110,7 +110,9 @@ class DatasetGenerator:
             error_msg = str(e).lower()
             
             # Check if it's a PDF parsing error (bbox, parsing, etc.)
-            if any(err in error_msg for err in ['bbox', 'parse', 'pdf', 'pypdf']):
+            # More specific error keywords to avoid false positives
+            pdf_error_keywords = ['bbox', 'bounding box', 'pypdf', 'pdfminer', 'pdf parsing', 'extract_text', 'pdfreader']
+            if any(err in error_msg for err in pdf_error_keywords):
                 print(f"⚠️ PDF parsing error detected: {e}")
                 print("🔄 Falling back to text conversion...")
                 
