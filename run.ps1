@@ -41,7 +41,8 @@ if (-not (Test-Path (Join-Path $FrontendDir "node_modules"))) {
 
 # 5. Start Servers
 Write-Host "[>] Starting Backend (Port 8000)..." -ForegroundColor Cyan
-$BackendProcess = Start-Process uvicorn -ArgumentList "src.api:app --host 0.0.0.0 --port 8000 --reload" -PassThru -NoNewWindow
+$UvicornPath = Join-Path $VenvDir "Scripts\uvicorn.exe"
+$BackendProcess = Start-Process $UvicornPath -ArgumentList "src.api:app --host 0.0.0.0 --port 8000 --reload" -PassThru -NoNewWindow
 
 Start-Sleep -Seconds 3
 
