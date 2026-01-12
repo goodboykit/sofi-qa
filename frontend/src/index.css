@@ -1407,6 +1407,8 @@ input[type="range"]::-moz-range-thumb {
   overflow-y: auto;
 
   /* Enable vertical scrolling */
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Custom Scrollbar for Results */
@@ -1416,6 +1418,79 @@ input[type="range"]::-moz-range-thumb {
 
 .documents-body::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* ========================================
+   Tooltips
+   ======================================== */
+
+.label-with-tooltip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+}
+
+.info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid var(--text-muted);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: bold;
+  cursor: help;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.info-icon:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(0, 201, 167, 0.1);
+}
+
+.tooltip-text {
+  visibility: hidden;
+  width: 220px;
+  background-color: #1e1e1e;
+  color: #fff;
+  text-align: left;
+  border-radius: 6px;
+  padding: 8px 12px;
+  position: absolute;
+  z-index: 1000;
+  bottom: 125%;
+  /* Position above */
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.2s;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.4;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border);
+  pointer-events: none;
+}
+
+.info-icon:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
+.tooltip-text::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #1e1e1e transparent transparent transparent;
 }
 
 .documents-body::-webkit-scrollbar-thumb {
