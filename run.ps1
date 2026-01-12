@@ -47,10 +47,8 @@ $BackendProcess = Start-Process $UvicornPath -ArgumentList "src.api:app --host 0
 Start-Sleep -Seconds 3
 
 Write-Host "[>] Starting Frontend (Port 5173)..." -ForegroundColor Cyan
-Push-Location $FrontendDir
-# We run npm in a new process to avoid blocking
-$FrontendProcess = Start-Process npm -ArgumentList "run dev" -PassThru -NoNewWindow
-Pop-Location
+# Use -WorkingDirectory to ensure npm runs from frontend folder
+$FrontendProcess = Start-Process cmd -ArgumentList "/c npm run dev" -WorkingDirectory $FrontendDir -PassThru -NoNewWindow
 
 Write-Host ""
 Write-Host "[OK] Both servers are running!" -ForegroundColor Green
