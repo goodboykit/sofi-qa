@@ -133,9 +133,12 @@ interface EvalTest {
     input?: string;
     actual?: string;
     expected?: string;
+    output?: string;
+    expected_output?: string;
     context?: string | string[];
     messages?: string[];
     expected_outcome?: string;
+    retrieval_context?: string[];
   };
 }
 
