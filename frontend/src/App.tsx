@@ -799,34 +799,27 @@ function App() {
 
             {/* Configuration Page */}
             {currentPage === 'configuration' && (
-              <main className="main" style={{ maxWidth: '800px', margin: '0 auto', overflow: 'hidden' }}>
+              <main className="main" style={{ maxWidth: '1200px', margin: '0 auto', overflow: 'hidden' }}>
                 <div className="card-container" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
 
                   <div className="documents-card" style={{ height: '100%' }}>
                     <div className="documents-header">
-                      <span className="documents-title">Global Synthesis Settings</span>
+                      <span className="documents-title">System Configuration</span>
                     </div>
-                    <div className="documents-body" style={{ padding: '20px', overflowY: 'auto' }}>
-                      <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '13px' }}>
+
+                    <div className="documents-body" style={{ padding: '32px', overflowY: 'auto' }}>
+                      <p style={{ color: 'var(--text-secondary)', marginBottom: '32px', fontSize: '13px' }}>
                         Configure the behavior of the AI synthesis engine. These settings apply to all future synthesis jobs.
                       </p>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '48px' }}>
 
-                        {/* API Key - Full Width */}
-                        <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                          <label className="form-label" style={{ fontSize: '13px' }}>OpenAI API Key</label>
-                          <input
-                            className="form-input"
-                            type="password"
-                            value={config.api_key || ''}
-                            onChange={e => setConfig({ ...config, api_key: e.target.value })}
-                            placeholder="sk-..."
-                          />
-                        </div>
+                        {/* Left Column: Global Synthesis Settings */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                          <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', color: 'var(--text-primary)', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                            Global Synthesis Settings
+                          </h3>
 
-                        {/* Column 1 */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                           <div className="form-group">
                             <label className="form-label" style={{ fontSize: '13px' }}>Task Description</label>
                             <input
@@ -841,16 +834,13 @@ function App() {
                             <label className="form-label" style={{ fontSize: '13px' }}>Scenario</label>
                             <textarea
                               className="form-input"
-                              style={{ minHeight: '120px', resize: 'vertical' }}
+                              style={{ minHeight: '100px', resize: 'vertical' }}
                               value={config.scenario}
                               onChange={e => setConfig({ ...config, scenario: e.target.value })}
                               placeholder="Describe the interaction scenario..."
                             />
                           </div>
-                        </div>
 
-                        {/* Column 2 */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                           <div className="form-group">
                             <label className="form-label" style={{ fontSize: '13px' }}>Input Format</label>
                             <input
@@ -859,6 +849,7 @@ function App() {
                               onChange={e => setConfig({ ...config, input_format: e.target.value })}
                             />
                           </div>
+
                           <div className="form-group">
                             <label className="form-label" style={{ fontSize: '13px' }}>Expected Output Format</label>
                             <input
@@ -868,58 +859,65 @@ function App() {
                             />
                           </div>
 
-                          {/* Weights in sub-grid */}
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: 'auto' }}>
+                          {/* Weights Grid */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                             <div className="form-group">
-                              <label className="form-label" style={{ fontSize: '13px' }}>Reasoning W.</label>
-                              <input
-                                type="range"
-                                min="0" max="1" step="0.1"
-                                style={{ width: '100%' }}
-                                value={config.reasoning_weight}
-                                onChange={e => setConfig({ ...config, reasoning_weight: parseFloat(e.target.value) })}
-                              />
-                              <div style={{ textAlign: 'right', fontSize: '11px', color: 'var(--text-secondary)' }}>{config.reasoning_weight}</div>
+                              <label className="form-label" style={{ fontSize: '13px' }}>Reasoning Weight</label>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <input
+                                  type="range"
+                                  min="0" max="1" step="0.1"
+                                  style={{ flex: 1 }}
+                                  value={config.reasoning_weight}
+                                  onChange={e => setConfig({ ...config, reasoning_weight: parseFloat(e.target.value) })}
+                                />
+                                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', width: '24px', textAlign: 'right' }}>{config.reasoning_weight}</span>
+                              </div>
                             </div>
                             <div className="form-group">
-                              <label className="form-label" style={{ fontSize: '13px' }}>Multi-Ctx W.</label>
-                              <input
-                                type="range"
-                                min="0" max="1" step="0.1"
-                                style={{ width: '100%' }}
-                                value={config.multicontext_weight}
-                                onChange={e => setConfig({ ...config, multicontext_weight: parseFloat(e.target.value) })}
-                              />
-                              <div style={{ textAlign: 'right', fontSize: '11px', color: 'var(--text-secondary)' }}>{config.multicontext_weight}</div>
+                              <label className="form-label" style={{ fontSize: '13px' }}>Multi-Context Weight</label>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <input
+                                  type="range"
+                                  min="0" max="1" step="0.1"
+                                  style={{ flex: 1 }}
+                                  value={config.multicontext_weight}
+                                  onChange={e => setConfig({ ...config, multicontext_weight: parseFloat(e.target.value) })}
+                                />
+                                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', width: '24px', textAlign: 'right' }}>{config.multicontext_weight}</span>
+                              </div>
                             </div>
                           </div>
 
                         </div>
 
-                        {/* Evaluation Settings - Full Width or Split */}
-                        <div className="form-divider" style={{ gridColumn: '1 / -1', margin: '8px 0', borderTop: '1px solid var(--border)' }} />
-                        <div style={{ gridColumn: '1 / -1' }}>
-                          <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: 'var(--text-primary)' }}>Evaluation Settings</h3>
-                        </div>
+                        {/* Right Column: Evaluation Settings */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                          <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', color: 'var(--text-primary)', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                            Evaluation Settings
+                          </h3>
 
-                        <div className="form-group">
-                          <label className="form-label" style={{ fontSize: '13px' }}>Metric Name</label>
-                          <input
-                            className="form-input"
-                            value={config.eval_metric_name || ''}
-                            onChange={e => setConfig({ ...config, eval_metric_name: e.target.value })}
-                            placeholder="e.g. Professionalism & Accuracy"
-                          />
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label" style={{ fontSize: '13px' }}>Metric Criteria</label>
-                          <textarea
-                            className="form-input"
-                            style={{ minHeight: '60px', resize: 'vertical' }}
-                            value={config.eval_metric_criteria || ''}
-                            onChange={e => setConfig({ ...config, eval_metric_criteria: e.target.value })}
-                            placeholder="Define the criteria for success..."
-                          />
+                          <div className="form-group">
+                            <label className="form-label" style={{ fontSize: '13px' }}>Metric Name</label>
+                            <input
+                              className="form-input"
+                              value={config.eval_metric_name || ''}
+                              onChange={e => setConfig({ ...config, eval_metric_name: e.target.value })}
+                              placeholder="e.g. Professionalism & Accuracy"
+                            />
+                          </div>
+
+                          <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                            <label className="form-label" style={{ fontSize: '13px' }}>Metric Criteria</label>
+                            <textarea
+                              className="form-input"
+                              style={{ flex: 1, resize: 'none', minHeight: '200px' }}
+                              value={config.eval_metric_criteria || ''}
+                              onChange={e => setConfig({ ...config, eval_metric_criteria: e.target.value })}
+                              placeholder="Define the criteria for success..."
+                            />
+                          </div>
+
                         </div>
 
                       </div>

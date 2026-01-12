@@ -3,18 +3,40 @@ from deepeval.synthesizer import Synthesizer
 from deepeval.synthesizer.config import EvolutionConfig, Evolution, StylingConfig, FiltrationConfig
 from src.config import get_model
 
+import json
+from pathlib import Path
+
 class DatasetGenerator:
     def __init__(self):
         self.model = get_model()
+        
+        # Load config dynamically
+        config_path = Path("data/generation_config.json")
+        config = {}
+        if config_path.exists():
+            with open(config_path, "r", encoding="utf-8") as f:
+                config = json.load(f)
+
+        # Config defaults
+        reasoning_weight = config.get("reasoning_weight", 0.5)
+        multicontext_weight = config.get("multicontext_weight", 0.5)
+        task = config.get("task", "Expert Customer Support")
+        scenario = config.get("scenario", "A customer interacting with an automated assistant.")
+        input_format = config.get("input_format", "Professional and specific queries")
+        expected_output_format = config.get("expected_output_format", "Detailed responses with citations")
+
         self.evolution_config = EvolutionConfig(
-            evolutions={Evolution.REASONING: 0.5, Evolution.MULTICONTEXT: 0.5},
+            evolutions={
+                Evolution.REASONING: reasoning_weight,
+                Evolution.MULTICONTEXT: multicontext_weight
+            },
             num_evolutions=2
         )
         self.styling_config = StylingConfig(
-            task="Expert Customer Support",
-            scenario="A customer interacting with an automated assistant.",
-            input_format="Professional and specific queries",
-            expected_output_format="Detailed responses with citations"
+            task=task,
+            scenario=scenario,
+            input_format=input_format,
+            expected_output_format=expected_output_format
         )
         self.synthesizer = Synthesizer(
             model=self.model,
