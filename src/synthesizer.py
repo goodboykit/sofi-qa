@@ -107,14 +107,13 @@ class DatasetGenerator:
             print("✅ Successfully generated goldens from documents directly!")
             
         except Exception as e:
-            error_msg = str(e).lower()
+            # Check if there are any PDFs in the input paths
+            has_pdf_files = any(Path(p).suffix.lower() == '.pdf' for p in paths)
             
-            # Check if it's a PDF parsing error (bbox, parsing, etc.)
-            # More specific error keywords to avoid false positives
-            pdf_error_keywords = ['bbox', 'bounding box', 'pypdf', 'pdfminer', 'pdf parsing', 'extract_text', 'pdfreader']
-            if any(err in error_msg for err in pdf_error_keywords):
-                print(f"⚠️ PDF parsing error detected: {e}")
-                print("🔄 Falling back to text conversion...")
+            if has_pdf_files:
+                # If PDFs are involved and generation failed, try text conversion fallback
+                print(f"⚠️ Error during document processing: {e}")
+                print("🔄 PDFs detected in input. Attempting text conversion fallback...")
                 
                 # Convert PDFs to text and retry
                 fallback_paths = []
@@ -124,19 +123,24 @@ class DatasetGenerator:
                         txt_path = convert_pdf_to_text(path)
                         if txt_path:
                             fallback_paths.append(txt_path)
-                        # If conversion fails, skip this document
+                        else:
+                            print(f"⚠️ Skipping {path_obj.name} - could not convert to text")
                     else:
                         # Non-PDF files pass through as-is
                         fallback_paths.append(path)
                 
                 if fallback_paths:
-                    self.synthesizer.synthetic_goldens = []
-                    generate_func(document_paths=fallback_paths, **kwargs)
-                    print("✅ Successfully generated goldens using text conversion fallback!")
+                    try:
+                        self.synthesizer.synthetic_goldens = []
+                        generate_func(document_paths=fallback_paths, **kwargs)
+                        print("✅ Successfully generated goldens using text conversion fallback!")
+                    except Exception as fallback_error:
+                        print(f"❌ Fallback also failed: {fallback_error}")
+                        raise fallback_error
                 else:
-                    raise Exception("No documents could be processed after fallback conversion")
+                    raise Exception("No documents could be processed - all PDF conversions failed")
             else:
-                # Re-raise if it's not a PDF parsing error
+                # No PDFs involved, re-raise the original error
                 raise
 
     def generate_single_turn(self, paths: List[str]):
