@@ -1065,7 +1065,7 @@ function App() {
                             </label>
                             <textarea
                               className="form-input"
-                              style={{ flex: 1, resize: 'none', minHeight: '200px', fontFamily: 'monospace', fontSize: '12px', lineHeight: '1.5' }}
+                              style={{ flex: 1, resize: 'none', minHeight: '200px', fontSize: '13px', lineHeight: '1.6' }}
                               value={config.eval_metric_criteria || ''}
                               onChange={e => setConfig({ ...config, eval_metric_criteria: e.target.value })}
                               placeholder="Describe exactly what makes a response 'Good' vs 'Bad'. e.g., 'The answer must be polite, concise, and contain at least one citation.'"
@@ -1091,8 +1091,8 @@ function App() {
 
             {/* Data Page */}
             {currentPage === 'data' && (
-              <main className="main" style={{ padding: 0, gap: 0 }}>
-                <div className="tab-header" style={{ padding: '0 24px', paddingTop: '24px', marginBottom: '16px' }}>
+              <main className="main" style={{ maxWidth: '1200px', margin: '0 auto', padding: 0, gap: 0, width: '100%', height: '100%', overflow: 'hidden' }}>
+                <div className="tab-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 24px', paddingTop: '24px', marginBottom: '16px' }}>
                   <div className="tabs">
                     <button
                       className={`tab-btn ${dataTab === 'single' ? 'active' : ''}`}
