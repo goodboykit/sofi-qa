@@ -142,13 +142,18 @@ pytest tests/ -v
 -   **Website looks weird?** Refresh the page (Cmd+Shift+R or Ctrl+Shift+R).
 -   **Tests failing?** Make sure you have data in `data/synthetic_data/` first.
 -   **Evaluation won't start?** Generate data with Synthesis first before running tests.
+-   **"0 out of 0 chunks" during synthesis?** This means the PDF text extraction failed. Reinstall the PDF libraries (see below).
+-   **"No synthetic goldens found" error?** The document couldn't be processed. Check:
+    - Your PDF contains actual text (not scanned images)
+    - The PDF libraries are correctly installed
+    - Try a different PDF to test
 -   **PDF parsing issues?** The app uses a pinned combination of PDF libraries to avoid compatibility issues:
     - `pdfplumber==0.11.4`
     - `pdfminer.six==20231228`
     - `pypdf==4.2.0`
     - `pymupdf`
     
-    If you see a `'bbox'` KeyError, reinstall these packages:
+    If you see a `'bbox'` KeyError or synthesis fails, reinstall these packages:
     ```bash
     pip install pdfplumber==0.11.4 pdfminer.six==20231228 pypdf==4.2.0 pymupdf --force-reinstall
     ```
