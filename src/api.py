@@ -102,6 +102,8 @@ class ConfigUpdate(BaseModel):
     num_evolutions: Optional[int] = 2
     num_goldens: Optional[int] = 2
     eval_threshold: Optional[float] = 0.7
+    eval_timeout: Optional[int] = 60  # Timeout in seconds per test (saves API credits)
+    max_user_simulations: Optional[int] = 2  # Number of conversation rounds for multi-turn tests
 
 
 # ============ Config Endpoints ============
@@ -126,7 +128,9 @@ async def get_config():
         "model_name": "gpt-4o-mini",
         "num_evolutions": 2,
         "num_goldens": 2,
-        "eval_threshold": 0.7
+        "eval_threshold": 0.7,
+        "eval_timeout": 60,
+        "max_user_simulations": 2
     }
 
 
@@ -521,6 +525,12 @@ async def stream_evaluation():
                         env_vars["OPENAI_API_KEY"] = conf["api_key"]
                     if "eval_threshold" in conf:
                         env_vars["EVAL_THRESHOLD"] = str(conf["eval_threshold"])
+                    if "eval_timeout" in conf:
+                        env_vars["EVAL_TIMEOUT"] = str(conf["eval_timeout"])
+                    if "model_name" in conf:
+                        env_vars["EVAL_MODEL"] = conf["model_name"]
+                    if "max_user_simulations" in conf:
+                        env_vars["MAX_USER_SIMULATIONS"] = str(conf["max_user_simulations"])
             except:
                 pass
 

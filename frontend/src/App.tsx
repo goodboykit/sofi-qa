@@ -165,6 +165,8 @@ interface Config {
   num_evolutions?: number;
   num_goldens?: number;
   eval_threshold?: number;
+  eval_timeout?: number;
+  max_user_simulations?: number;
 }
 
 type Page = 'synthesis' | 'documents' | 'configuration' | 'data' | 'evaluation';
@@ -268,7 +270,9 @@ function App() {
     model_name: 'gpt-4o-mini',
     num_evolutions: 2,
     num_goldens: 2,
-    eval_threshold: 0.7
+    eval_threshold: 0.7,
+    eval_timeout: 60,
+    max_user_simulations: 2
   });
   const [showConfigModal, setShowConfigModal] = useState(false);
 
@@ -879,6 +883,7 @@ function App() {
                             <textarea
                               className="textarea form-input"
                               rows={3}
+                              style={{ minHeight: '100px', resize: 'vertical' }}
                               placeholder="e.g. You are a helpful assistant..."
                               value={config.task}
                               onChange={e => setConfig({ ...config, task: e.target.value })}
@@ -895,47 +900,14 @@ function App() {
                             <textarea
                               className="textarea form-input"
                               rows={3}
+                              style={{ minHeight: '100px', resize: 'vertical' }}
                               placeholder="e.g. A user is asking about..."
                               value={config.scenario}
                               onChange={e => setConfig({ ...config, scenario: e.target.value })}
                             />
                           </div>
 
-                          {/* Data Volume & Complexity Grid */}
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-                            <div className="form-group">
-                              <label className="label-with-tooltip">
-                                Data Volume
-                                <span className="info-icon">i
-                                  <span className="tooltip-text">Number of synthetic Q&A pairs to generate per source document.</span>
-                                </span>
-                              </label>
-                              <input
-                                type="number"
-                                className="form-input"
-                                min="1"
-                                max="50"
-                                value={config.num_goldens}
-                                onChange={e => setConfig({ ...config, num_goldens: parseInt(e.target.value) || 5 })}
-                              />
-                            </div>
-                            <div className="form-group">
-                              <label className="label-with-tooltip">
-                                Complexity
-                                <span className="info-icon">i
-                                  <span className="tooltip-text">Number of evolution steps to complicate the query (higher = harder questions).</span>
-                                </span>
-                              </label>
-                              <input
-                                type="number"
-                                className="form-input"
-                                min="1"
-                                max="5"
-                                value={config.num_evolutions}
-                                onChange={e => setConfig({ ...config, num_evolutions: parseInt(e.target.value) || 1 })}
-                              />
-                            </div>
-                          </div>
+
 
                           {/* Formatting */}
                           <div className="form-group">
@@ -945,8 +917,10 @@ function App() {
                                 <span className="tooltip-text">Format of the user query (e.g., 'A short, direct question').</span>
                               </span>
                             </label>
-                            <input
+                            <textarea
                               className="form-input"
+                              rows={2}
+                              style={{ resize: 'vertical', minHeight: '100px', paddingTop: '10px' }}
                               value={config.input_format}
                               onChange={e => setConfig({ ...config, input_format: e.target.value })}
                               placeholder="e.g. Short queries"
@@ -960,12 +934,59 @@ function App() {
                                 <span className="tooltip-text">Format of the expected answer (e.g., 'A detailed paragraph with citations').</span>
                               </span>
                             </label>
-                            <input
+                            <textarea
                               className="form-input"
+                              rows={2}
+                              style={{ resize: 'vertical', minHeight: '100px', paddingTop: '10px' }}
                               value={config.expected_output_format}
                               onChange={e => setConfig({ ...config, expected_output_format: e.target.value })}
                               placeholder="e.g. Detailed answers"
                             />
+                          </div>
+
+                          {/* Data Volume & Complexity Grid */}
+                          {/* Data Volume & Complexity Grid */}
+                          <div style={{ background: 'var(--bg-card-hover)', padding: '16px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', marginBottom: '24px' }}>
+                            <label className="label-with-tooltip" style={{ color: 'var(--accent)', fontWeight: 600, marginBottom: '12px', display: 'flex' }}>
+                              GENERATION SCALE
+                              <span className="info-icon" style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}>i
+                                <span className="tooltip-text">Control the quantity and difficulty of the synthetic data.</span>
+                              </span>
+                            </label>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                              <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="label-with-tooltip">
+                                  Data Volume
+                                  <span className="info-icon">i
+                                    <span className="tooltip-text">Number of synthetic Q&A pairs to generate per source document.</span>
+                                  </span>
+                                </label>
+                                <input
+                                  type="number"
+                                  className="form-input"
+                                  min="1"
+                                  max="50"
+                                  value={config.num_goldens}
+                                  onChange={e => setConfig({ ...config, num_goldens: parseInt(e.target.value) || 5 })}
+                                />
+                              </div>
+                              <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="label-with-tooltip">
+                                  Complexity
+                                  <span className="info-icon">i
+                                    <span className="tooltip-text">Number of evolution steps to complicate the query (higher = harder questions).</span>
+                                  </span>
+                                </label>
+                                <input
+                                  type="number"
+                                  className="form-input"
+                                  min="1"
+                                  max="5"
+                                  value={config.num_evolutions}
+                                  onChange={e => setConfig({ ...config, num_evolutions: parseInt(e.target.value) || 1 })}
+                                />
+                              </div>
+                            </div>
                           </div>
 
                           {/* Weights Grid */}
@@ -1031,9 +1052,10 @@ function App() {
                                 <span className="tooltip-text">Name of the custom metric used for evaluation (e.g., 'Correctness').</span>
                               </span>
                             </label>
-                            <input
+                            <textarea
                               className="form-input"
-                              style={{ minHeight: '44px' }}
+                              rows={1}
+                              style={{ resize: 'vertical', minHeight: '50px', paddingTop: '10px', height: 'auto' }}
                               value={config.eval_metric_name || ''}
                               onChange={e => setConfig({ ...config, eval_metric_name: e.target.value })}
                               placeholder="e.g. Professionalism, Accuracy, Empathy"
@@ -1042,25 +1064,6 @@ function App() {
 
                           <div className="form-group">
                             <label className="label-with-tooltip">
-                              Pass Threshold
-                              <span className="info-icon">i
-                                <span className="tooltip-text">Minimum score (0 to 1) required to pass the test. Higher is stricter.</span>
-                              </span>
-                            </label>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <input
-                                type="range"
-                                min="0" max="1" step="0.1"
-                                style={{ flex: 1, backgroundSize: `${(config.eval_threshold || 0) * 100}% 100%` }}
-                                value={config.eval_threshold}
-                                onChange={e => setConfig({ ...config, eval_threshold: parseFloat(e.target.value) })}
-                              />
-                              <span style={{ fontSize: '12px', color: 'var(--text-secondary)', width: '24px', textAlign: 'right' }}>{config.eval_threshold}</span>
-                            </div>
-                          </div>
-
-                          <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                            <label className="label-with-tooltip">
                               Grading Criteria
                               <span className="info-icon">i
                                 <span className="tooltip-text">Describe exactly what makes a response 'Good' vs 'Bad' for the AI judge.</span>
@@ -1068,22 +1071,115 @@ function App() {
                             </label>
                             <textarea
                               className="form-input"
-                              style={{ flex: 1, resize: 'none', minHeight: '200px', fontSize: '13px', lineHeight: '1.6' }}
+                              rows={6}
+                              style={{ resize: 'vertical', minHeight: '120px', fontSize: '13px', lineHeight: '1.6', height: 'auto', paddingTop: '12px' }}
                               value={config.eval_metric_criteria || ''}
                               onChange={e => setConfig({ ...config, eval_metric_criteria: e.target.value })}
                               placeholder="Describe exactly what makes a response 'Good' vs 'Bad'. e.g., 'The answer must be polite, concise, and contain at least one citation.'"
                             />
                           </div>
 
+                          {/* Execution Settings Container */}
+                          <div style={{ background: 'var(--bg-card-hover)', padding: '16px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', marginTop: '8px' }}>
+                            <label className="label-with-tooltip" style={{ color: 'var(--accent)', fontWeight: 600, marginBottom: '16px', display: 'flex' }}>
+                              EXECUTION CONTROL
+                              <span className="info-icon" style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}>i
+                                <span className="tooltip-text">Fine-tune how the evaluation tests are executed and graded.</span>
+                              </span>
+                            </label>
+
+                            <div className="form-group" style={{ marginBottom: '24px' }}>
+                              <label className="label-with-tooltip">
+                                Pass Threshold
+                                <span className="info-icon">i
+                                  <span className="tooltip-text">Minimum score (0 to 1) required to pass the test. Higher is stricter.</span>
+                                </span>
+                              </label>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <input
+                                  type="range"
+                                  min="0" max="1" step="0.1"
+                                  style={{ flex: 1, backgroundSize: `${(config.eval_threshold || 0) * 100}% 100%` }}
+                                  value={config.eval_threshold}
+                                  onChange={e => setConfig({ ...config, eval_threshold: parseFloat(e.target.value) })}
+                                />
+                                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', width: '24px', textAlign: 'right' }}>{config.eval_threshold}</span>
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '20px' }}>
+                              <div className="form-group" style={{ flex: 1 }}>
+                                <label className="label-with-tooltip">
+                                  Test Timeout
+                                  <span className="info-icon">i
+                                    <span className="tooltip-text">
+                                      Maximum time allowed per test in seconds.
+                                      <br /><br />
+                                      <strong>Recommended: 60s</strong>
+                                      <br />
+                                      • Lower (e.g., 30s): Saves credits, but might timeout.
+                                      <br />
+                                      • Higher (e.g., 300s): Thorough, but costs more.
+                                    </span>
+                                  </span>
+                                </label>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <input
+                                    type="number"
+                                    className="form-input"
+                                    min="10" max="300" step="10"
+                                    style={{ flex: 1 }}
+                                    value={config.eval_timeout || 60}
+                                    onChange={e => setConfig({ ...config, eval_timeout: parseInt(e.target.value) || 60 })}
+                                  />
+                                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>seconds</span>
+                                </div>
+                              </div>
+
+                              <div className="form-group" style={{ flex: 1 }}>
+                                <label className="label-with-tooltip">
+                                  Conversation Rounds
+                                  <span className="info-icon">i
+                                    <span className="tooltip-text">
+                                      Number of back-and-forth turns to simulate.
+                                      <br /><br />
+                                      <strong>Recommended: 2 rounds</strong>
+                                      <br />
+                                      • 2 rounds: Good balance of cost & quality.
+                                      <br />
+                                      • 5 rounds: Very deep testing, higher API cost.
+                                    </span>
+                                  </span>
+                                </label>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <input
+                                    type="number"
+                                    className="form-input"
+                                    min="1" max="5" step="1"
+                                    style={{ flex: 1 }}
+                                    value={config.max_user_simulations || 2}
+                                    onChange={e => setConfig({ ...config, max_user_simulations: parseInt(e.target.value) || 2 })}
+                                  />
+                                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>rounds</span>
+                                </div>
+                              </div>
+                            </div>
+
+                          </div>
+
+                          <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
+                            <button className="btn btn-primary" onClick={saveConfig}>
+                              Save Configuration
+                            </button>
+                          </div>
+
+
+
                         </div>
 
                       </div>
 
-                      <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
-                        <button className="btn btn-primary" onClick={saveConfig}>
-                          Save Configuration
-                        </button>
-                      </div>
+
 
                     </div>
                   </div>
@@ -1157,22 +1253,79 @@ function App() {
                               <details>
                                 <summary>View Context</summary>
                                 <div className="context-list">
-                                  {Array.isArray(item.context) ? item.context.map((c: string, cIdx: number) => (
-                                    <div key={cIdx} className="context-item chat-mode">
-                                      <div className="chat-container context-mode">
-                                        {c.split('\n').filter(line => line.trim() !== '').map((line, lIdx) => {
-                                          const t = line.trim().toLowerCase();
-                                          const questionWords = ['what', 'when', 'where', 'who', 'why', 'how', 'is', 'are', 'was', 'were', 'do', 'does', 'did', 'can', 'could', 'will', 'would', 'should', 'may', 'might', 'must', 'have', 'has', 'had'];
-                                          const isQuestion = t.endsWith('?') || questionWords.some(w => t.startsWith(w + ' '));
-                                          return (
-                                            <div key={lIdx} className={`chat-bubble ${isQuestion ? 'user' : 'bot'} context-bubble`}>
-                                              {line}
-                                            </div>
-                                          );
-                                        })}
+                                  {Array.isArray(item.context) ? item.context.map((c: string, cIdx: number) => {
+                                    // Smart split: detect where answers begin based on common response patterns
+                                    // This handles concatenated Q&A like "Do you have X?Yes we do" or "What is XIt is..."
+                                    const splitIntoQA = (text: string): string[] => {
+                                      const parts: string[] = [];
+
+                                      // First, try splitting on ? if present
+                                      if (text.includes('?')) {
+                                        // Split keeping the ?
+                                        const qSplit = text.split(/(\?)/);
+                                        let current = '';
+                                        for (let i = 0; i < qSplit.length; i++) {
+                                          if (qSplit[i] === '?') {
+                                            current += '?';
+                                            if (current.trim()) parts.push(current.trim());
+                                            current = '';
+                                          } else {
+                                            current += qSplit[i];
+                                          }
+                                        }
+                                        if (current.trim()) parts.push(current.trim());
+                                      } else {
+                                        // No ? found - try to detect answer starters
+                                        // Common patterns where answers start (capital letter after lowercase)
+                                        // Includes English, Tagalog, and Taglish response starters
+                                        const answerStarters = /([a-z,!.])(?=(Currently|Unfortunately|Actually|However|Yes|No|Oh|We |Our |The |It |I |Thank|Please|Sure|Absolutely|Of course|Certainly|So |Basically|Well |Right now|At the moment|Hindi|Oo|Wala|Meron|Mayroon|Opo|Sa |Ang |Yung |Kasi|Marami|Salamat|Pasensya|Libre|Kapag|Nag|May |Pwede |Puwede |Maaari |Kami |Tayo |Sila |Ito |Iyan |Iyon |Para |Dahil|Siguro|Depende|Sorry|Okay|Ok ))/g;
+                                        const splitText = text.replace(answerStarters, '$1|||SPLIT|||');
+                                        const rawParts = splitText.split('|||SPLIT|||');
+                                        rawParts.forEach(p => {
+                                          if (p.trim()) parts.push(p.trim());
+                                        });
+                                      }
+
+                                      return parts.length > 0 ? parts : [text];
+                                    };
+
+                                    const segments = splitIntoQA(c).flatMap(seg => seg.split('\n').filter(line => line.trim() !== ''));
+
+                                    return (
+                                      <div key={cIdx} className="context-item chat-mode">
+                                        <div className="chat-container context-mode">
+                                          {segments.map((line, lIdx) => {
+                                            const t = line.trim().toLowerCase();
+                                            // Question detection: ends with ? OR starts with question words
+                                            // Comprehensive list for English, Tagalog, and Taglish
+                                            const questionStarters = [
+                                              // English question starters
+                                              'what', 'when', 'where', 'who', 'why', 'how', 'which',
+                                              'is there', 'are there', 'is it', 'is the', 'are you', 'are we',
+                                              'do you', 'do we', 'do they', 'does', 'did',
+                                              'can i', 'can we', 'can you', 'could', 'would', 'will', 'shall',
+                                              'have you', 'has', 'had',
+                                              // Filipino/Tagalog question starters
+                                              'ano', 'saan', 'nasaan', 'kailan', 'kelan', 'sino', 'bakit', 'paano', 'magkano', 'ilan', 'gaano',
+                                              'pwede ba', 'puwede ba', 'pwede', 'puwede', 'maaari ba', 'maaari',
+                                              'meron ba', 'mayroon ba', 'may ba', 'wala ba',
+                                              'libre ba', 'open ba', 'available ba', 'bukas ba', 'sarado ba',
+                                              'totoo ba', 'talaga ba', 'ganoon ba', 'ganon ba', 'diba',
+                                              'kailangan ba', 'kelangan ba', 'need ba',
+                                              // Taglish common patterns
+                                              'ok lang ba', 'okay lang ba', 'allowed ba', 'accept ba', 'valid ba', 'included ba'
+                                            ];
+                                            const isQuestion = t.endsWith('?') || questionStarters.some(w => t.startsWith(w + ' ') || t.startsWith(w + '?') || t === w);
+                                            return (
+                                              <div key={lIdx} className={`chat-bubble ${isQuestion ? 'user' : 'bot'} context-bubble`}>
+                                                {line}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
                                       </div>
-                                    </div>
-                                  )) : item.context}
+                                    );
+                                  }) : item.context}
                                 </div>
                               </details>
                             </div>
@@ -1288,17 +1441,33 @@ function App() {
                     So we hide logs fully if results exist.
                 */}
                 {!evalResult && (
-                  <div className="documents-card">
-                    <div className="documents-header">
-                      <span className="documents-title">Execution Logs</span>
-                      <span className="documents-count">{evalLogs.length} lines</span>
+                  <div className="console-card">
+                    <div className="console-header">
+                      <span className="console-title">Execution Logs</span>
+                      <span className="console-meta">{evalLogs.length} lines</span>
                     </div>
-                    <div className="documents-body console-body" ref={evalConsoleRef}>
+                    <div className="console-body" ref={evalConsoleRef}>
                       {evalLogs.map((log, i) => (
                         <div key={i} className="console-line">{log}</div>
                       ))}
                       {evalLogs.length === 0 && (
-                        <div className="console-line text-muted">Waiting for execution...</div>
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          height: '100%',
+                          color: 'var(--text-muted)',
+                          opacity: 0.6,
+                          minHeight: '200px'
+                        }}>
+                          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '16px' }}>
+                            <polyline points="4 17 10 11 4 5"></polyline>
+                            <line x1="12" y1="19" x2="20" y2="19"></line>
+                          </svg>
+                          <div style={{ fontSize: '14px', fontFamily: 'monospace' }}>No output yet</div>
+                          <div style={{ fontSize: '12px', marginTop: '4px' }}>Click Run Tests to begin</div>
+                        </div>
                       )}
                     </div>
                   </div>

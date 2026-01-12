@@ -8,8 +8,10 @@
   "api_key": null,
   "eval_metric_name": "Professionalism and Accuracy",
   "eval_metric_criteria": "Does the bot maintain the Clark Safari persona and provide accurate info?",
-  "model_name": "gpt-3.5-turbo",
+  "model_name": "gpt-4o-mini",
   "num_evolutions": 1,
   "num_goldens": 1,
-  "eval_threshold": 0.5
+  "eval_threshold": 0.6,
+  "eval_timeout": 60,
+  "max_user_simulations": 2
 }

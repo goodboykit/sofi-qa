@@ -133,6 +133,20 @@ pytest tests/ -v
 - **Faithfulness**: Is the answer true to the source document?
 - **Conversation Quality**: Does the bot sound professional?
 
+### ⚙️ Evaluation Configuration
+
+You can customize how strict or thorough the tests are in the **Configuration** page:
+
+| Setting | Description | Recommended |
+|---------|-------------|-------------|
+| **Pass Threshold** | Minimum score (0.0 to 1.0) required to pass. Higher is stricter. | `0.6` (Balanced) |
+| **Test Timeout** | Maximum time allowed per test (in seconds). Lower values save money but may timeout. | `60` sec |
+| **Conversation Rounds** | Number of back-and-forth turns to simulate in chat tests. | `2` rounds |
+| **AI Model** | The brain used to judge the answers. `gpt-4o-mini` is cheaper and faster. | `gpt-4o-mini` |
+| **Metric Name** | The name of your custom quality check (e.g., "Professionalism"). | "Professionalism" |
+| **Grading Criteria** | The rulebook the AI judge follows to grade answers. | (See default) |
+| **API Key** | Your OpenAI key. Needed for the AI judge to work. | (Required) |
+
 ---
 
 ## 🔧 Fixing Problems
