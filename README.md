@@ -142,7 +142,16 @@ pytest tests/ -v
 -   **Website looks weird?** Refresh the page (Cmd+Shift+R or Ctrl+Shift+R).
 -   **Tests failing?** Make sure you have data in `data/synthetic_data/` first.
 -   **Evaluation won't start?** Generate data with Synthesis first before running tests.
--   **PDF parsing issues?** The app uses PyMuPDF for robust PDF parsing on all platforms. Make sure `pymupdf` is installed: `pip install pymupdf`
+-   **PDF parsing issues?** The app uses a pinned combination of PDF libraries to avoid compatibility issues:
+    - `pdfplumber==0.11.4`
+    - `pdfminer.six==20231228`
+    - `pypdf==4.2.0`
+    - `pymupdf`
+    
+    If you see a `'bbox'` KeyError, reinstall these packages:
+    ```bash
+    pip install pdfplumber==0.11.4 pdfminer.six==20231228 pypdf==4.2.0 pymupdf --force-reinstall
+    ```
 
 ---
 

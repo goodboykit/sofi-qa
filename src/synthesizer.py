@@ -48,15 +48,71 @@ class DatasetGenerator:
             styling_config=self.styling_config,
             filtration_config=FiltrationConfig()
         )
+    
+    def _extract_text_from_pdf(self, pdf_path: str) -> str:
+        """Extract text from PDF using pdfplumber (Windows-compatible)."""
+        import pdfplumber
+        text_parts = []
+        with pdfplumber.open(pdf_path) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text_parts.append(page_text)
+        return "\n\n".join(text_parts)
+    
+    def _get_document_contexts(self, paths: List[str]) -> List[str]:
+        """Extract text contexts from documents, handling PDFs specially on Windows."""
+        contexts = []
+        for path in paths:
+            path_obj = Path(path)
+            if path_obj.suffix.lower() == '.pdf':
+                try:
+                    text = self._extract_text_from_pdf(path)
+                    if text.strip():
+                        # Split into chunks of ~2000 chars for better context handling
+                        chunk_size = 2000
+                        for i in range(0, len(text), chunk_size):
+                            chunk = text[i:i+chunk_size].strip()
+                            if chunk:
+                                contexts.append(chunk)
+                        print(f"✅ Extracted {len(contexts)} chunks from {path_obj.name}")
+                    else:
+                        print(f"⚠️ No text found in {path_obj.name}")
+                except Exception as e:
+                    print(f"❌ Error reading {path_obj.name}: {e}")
+            elif path_obj.suffix.lower() == '.docx':
+                # Handle DOCX files
+                try:
+                    from docx import Document
+                    doc = Document(path)
+                    text = "\n".join([para.text for para in doc.paragraphs if para.text.strip()])
+                    if text.strip():
+                        chunk_size = 2000
+                        for i in range(0, len(text), chunk_size):
+                            chunk = text[i:i+chunk_size].strip()
+                            if chunk:
+                                contexts.append(chunk)
+                        print(f"✅ Extracted {len(contexts)} chunks from {path_obj.name}")
+                except Exception as e:
+                    print(f"❌ Error reading {path_obj.name}: {e}")
+        return contexts
 
     def generate_single_turn(self, paths: List[str]):
         # Reset internal list to ensure file is clean
         self.synthesizer.synthetic_goldens = []
+        
+        # Use document paths directly - DeepEval handles PDF parsing internally
+        # The from_docs method is more reliable for proper context formatting
+        print(f"📊 Processing {len(paths)} document(s) for synthesis")
         self.synthesizer.generate_goldens_from_docs(
             document_paths=paths,
             max_goldens_per_context=self.num_goldens,
             include_expected_output=True
         )
+        
+        if not self.synthesizer.synthetic_goldens:
+            raise ValueError("No goldens were generated. Please check your documents contain readable text.")
+        
         self.synthesizer.save_as(file_type='json', directory="data/synthetic_data", file_name="single_turn_goldens")
 
     def generate_multi_turn(self, paths: List[str]):
@@ -64,8 +120,14 @@ class DatasetGenerator:
         self.synthesizer.synthetic_goldens = []
         self.synthesizer.synthetic_conversational_goldens = []
         
+        # Use document paths directly - DeepEval handles PDF parsing internally
+        print(f"📊 Processing {len(paths)} document(s) for synthesis")
         self.synthesizer.generate_conversational_goldens_from_docs(
             document_paths=paths,
             max_goldens_per_context=self.num_goldens
         )
+        
+        if not self.synthesizer.synthetic_conversational_goldens:
+            raise ValueError("No conversations were generated. Please check your documents contain readable text.")
+        
         self.synthesizer.save_as(file_type='json', directory="data/synthetic_data", file_name="multi_turn_goldens")

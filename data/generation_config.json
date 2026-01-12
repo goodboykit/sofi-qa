@@ -3,13 +3,13 @@
   "scenario": "A customer interacting with an automated assistant.",
   "input_format": "Professional and specific queries",
   "expected_output_format": "Detailed responses with citations",
-  "reasoning_weight": 0.8,
-  "multicontext_weight": 0.7,
+  "reasoning_weight": 0.5,
+  "multicontext_weight": 0.5,
   "api_key": null,
   "eval_metric_name": "Professionalism and Accuracy",
   "eval_metric_criteria": "Does the bot maintain the Clark Safari persona and provide accurate info?",
   "model_name": "gpt-3.5-turbo",
-  "num_evolutions": 2,
-  "num_goldens": 2,
+  "num_evolutions": 1,
+  "num_goldens": 1,
   "eval_threshold": 0.5
 }
