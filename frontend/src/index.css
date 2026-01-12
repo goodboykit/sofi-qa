@@ -632,8 +632,6 @@ body {
 .btn-stop {
   background: var(--error);
   color: #fff;
-  padding: 12px 20px;
-  font-size: 14px;
   animation: fadeIn 0.2s ease;
 }
 
