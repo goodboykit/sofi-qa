@@ -5,53 +5,39 @@ from src.config import get_model
 
 import json
 import tempfile
-import os
 from pathlib import Path
 
 
-def preprocess_documents(paths: List[str]) -> List[str]:
+def convert_pdf_to_text(path: str) -> str:
     """
-    Preprocess document paths - convert PDFs to text files to avoid bbox parsing errors.
-    Returns a list of paths that DeepEval can safely process.
+    Fallback: Convert a PDF to text using pdfplumber.
+    Returns the path to the text file, or None if conversion fails.
     """
-    processed_paths = []
+    path_obj = Path(path)
     
-    for path in paths:
-        path_obj = Path(path)
+    try:
+        import pdfplumber
         
-        if path_obj.suffix.lower() == '.pdf':
-            try:
-                import pdfplumber
-                
-                # Extract text from PDF
-                with pdfplumber.open(path) as pdf:
-                    text = '\n\n'.join([
-                        page.extract_text() or '' 
-                        for page in pdf.pages
-                    ])
-                
-                if text.strip():
-                    # Save as temp text file
-                    temp_dir = Path(tempfile.gettempdir()) / "sofi_qa_docs"
-                    temp_dir.mkdir(exist_ok=True)
-                    
-                    txt_path = temp_dir / f"{path_obj.stem}.txt"
-                    txt_path.write_text(text, encoding='utf-8')
-                    processed_paths.append(str(txt_path))
-                    print(f"Preprocessed PDF: {path_obj.name} -> {txt_path.name}")
-                else:
-                    print(f"Warning: No text extracted from {path_obj.name}")
-            except ImportError:
-                print("Warning: pdfplumber not installed, passing PDF directly to DeepEval")
-                processed_paths.append(path)
-            except Exception as e:
-                print(f"Warning: Could not preprocess {path_obj.name}: {e}")
-                processed_paths.append(path)
+        with pdfplumber.open(path) as pdf:
+            text = '\n\n'.join([
+                page.extract_text() or '' 
+                for page in pdf.pages
+            ])
+        
+        if text.strip():
+            temp_dir = Path(tempfile.gettempdir()) / "sofi_qa_docs"
+            temp_dir.mkdir(exist_ok=True)
+            
+            txt_path = temp_dir / f"{path_obj.stem}.txt"
+            txt_path.write_text(text, encoding='utf-8')
+            print(f"📄 Converted PDF to text: {path_obj.name} -> {txt_path.name}")
+            return str(txt_path)
         else:
-            # Non-PDF files pass through as-is
-            processed_paths.append(path)
-    
-    return processed_paths
+            print(f"⚠️ Warning: No text extracted from {path_obj.name}")
+            return None
+    except Exception as e:
+        print(f"❌ Error converting PDF to text: {e}")
+        return None
 
 
 class DatasetGenerator:
@@ -106,26 +92,66 @@ class DatasetGenerator:
             filtration_config=FiltrationConfig()
         )
 
-    def generate_single_turn(self, paths: List[str]):
-        # Preprocess PDFs to avoid bbox parsing errors
-        processed_paths = preprocess_documents(paths)
-        
+    def _try_generate_with_fallback(self, paths: List[str], generate_func, **kwargs):
+        """
+        Try to generate goldens directly from documents first.
+        If PDF parsing fails (bbox errors, etc.), fall back to text conversion.
+        """
         # Reset internal list to ensure file is clean
         self.synthesizer.synthetic_goldens = []
-        self.synthesizer.generate_goldens_from_docs(
-            document_paths=processed_paths,
+        
+        try:
+            # First attempt: Try reading documents directly (including PDFs)
+            print(f"📚 Reading documents directly: {[Path(p).name for p in paths]}")
+            generate_func(document_paths=paths, **kwargs)
+            print("✅ Successfully generated goldens from documents directly!")
+            
+        except Exception as e:
+            error_msg = str(e).lower()
+            
+            # Check if it's a PDF parsing error (bbox, parsing, etc.)
+            if any(err in error_msg for err in ['bbox', 'parse', 'pdf', 'pypdf']):
+                print(f"⚠️ PDF parsing error detected: {e}")
+                print("🔄 Falling back to text conversion...")
+                
+                # Convert PDFs to text and retry
+                fallback_paths = []
+                for path in paths:
+                    path_obj = Path(path)
+                    if path_obj.suffix.lower() == '.pdf':
+                        txt_path = convert_pdf_to_text(path)
+                        if txt_path:
+                            fallback_paths.append(txt_path)
+                        # If conversion fails, skip this document
+                    else:
+                        # Non-PDF files pass through as-is
+                        fallback_paths.append(path)
+                
+                if fallback_paths:
+                    self.synthesizer.synthetic_goldens = []
+                    generate_func(document_paths=fallback_paths, **kwargs)
+                    print("✅ Successfully generated goldens using text conversion fallback!")
+                else:
+                    raise Exception("No documents could be processed after fallback conversion")
+            else:
+                # Re-raise if it's not a PDF parsing error
+                raise
+
+    def generate_single_turn(self, paths: List[str]):
+        """Generate single-turn Q&A pairs from documents."""
+        self._try_generate_with_fallback(
+            paths,
+            self.synthesizer.generate_goldens_from_docs,
             max_goldens_per_context=2,
             include_expected_output=True
         )
         self.synthesizer.save_as(file_type='json', directory="data/synthetic_data", file_name="single_turn_goldens")
 
     def generate_multi_turn(self, paths: List[str]):
-        # Preprocess PDFs to avoid bbox parsing errors
-        processed_paths = preprocess_documents(paths)
-        
-        self.synthesizer.synthetic_goldens = []
-        self.synthesizer.generate_conversational_goldens_from_docs(
-            document_paths=processed_paths,
+        """Generate multi-turn conversational goldens from documents."""
+        self._try_generate_with_fallback(
+            paths,
+            self.synthesizer.generate_conversational_goldens_from_docs,
             max_goldens_per_context=3
         )
         self.synthesizer.save_as(file_type='json', directory="data/synthetic_data", file_name="multi_turn_goldens")
