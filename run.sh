@@ -145,11 +145,15 @@ if ! python -c "import deepeval" 2>/dev/null; then
     echo -e "${YELLOW}⚠️  DeepEval not found. Installing all dependencies...${NC}"
     pip install --upgrade pip -q
     pip install -r "$SCRIPT_DIR/requirements.txt"
+    # Ensure PDF libraries are updated to fix bbox KeyError
+    pip install --upgrade pdfplumber pdfminer.six -q
     echo -e "${GREEN}✅ All Python packages installed${NC}"
 else
     echo -e "   ${GREEN}✓${NC} DeepEval found"
     # Quick install to ensure all packages are up to date (quiet mode)
     pip install -r "$SCRIPT_DIR/requirements.txt" -q
+    # Ensure PDF libraries are updated to fix bbox KeyError
+    pip install --upgrade pdfplumber pdfminer.six -q
     echo -e "   ${GREEN}✓${NC} Dependencies up to date"
 fi
 

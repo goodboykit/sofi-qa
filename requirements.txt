@@ -8,6 +8,10 @@ langchain-community
 langchain-text-splitters
 pypdf
 
+# PDF processing (pinned to fix bbox KeyError on Windows)
+pdfplumber>=0.11.0
+pdfminer.six>=20231228
+
 chardet
 tiktoken
 Pillow

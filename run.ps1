@@ -150,6 +150,8 @@ if (-not $DeepEvalInstalled) {
     try {
         pip install --upgrade pip --quiet
         pip install -r (Join-Path $ScriptDir "requirements.txt")
+        # Ensure PDF libraries are updated to fix bbox KeyError
+        pip install --upgrade pdfplumber pdfminer.six --quiet
         Write-Host "[OK] All Python packages installed" -ForegroundColor Green
     } catch {
         Write-Host "[X] Failed to install Python dependencies!" -ForegroundColor Red
@@ -162,6 +164,8 @@ if (-not $DeepEvalInstalled) {
     # Quick install to ensure all packages are up to date
     try {
         pip install -r (Join-Path $ScriptDir "requirements.txt") --quiet
+        # Ensure PDF libraries are updated to fix bbox KeyError
+        pip install --upgrade pdfplumber pdfminer.six --quiet
         Write-Host "    [OK] Dependencies up to date" -ForegroundColor Green
     } catch {
         Write-Host "[!] Some packages may have failed to update, continuing..." -ForegroundColor Yellow
