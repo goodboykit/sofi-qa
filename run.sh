@@ -27,9 +27,13 @@ echo -e "${NC}"
 
 echo -e "${CYAN}🔍 Checking prerequisites...${NC}"
 
-# Check for Python
+# Check for Python (prefer 3.11+, fallback to system python3)
 PYTHON_CMD=""
-if command -v python3 &>/dev/null; then
+if command -v python3.11 &>/dev/null; then
+    PYTHON_CMD="python3.11"
+elif command -v python3.12 &>/dev/null; then
+    PYTHON_CMD="python3.12"
+elif command -v python3 &>/dev/null; then
     PYTHON_CMD="python3"
 elif command -v python &>/dev/null; then
     PYTHON_CMD="python"

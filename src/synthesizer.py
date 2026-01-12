@@ -74,8 +74,8 @@ class DatasetGenerator:
 
         self.evolution_config = EvolutionConfig(
             evolutions={
-                Evolution.REASONING: config_data.get("reasoning_weight", 0.5),
-                Evolution.MULTICONTEXT: config_data.get("multicontext_weight", 0.5)
+                Evolution.REASONING: config_data.get("reasoning_weight", 0.6),
+                Evolution.MULTICONTEXT: config_data.get("multicontext_weight", 0.4)
             },
             num_evolutions=2
         )
@@ -85,11 +85,17 @@ class DatasetGenerator:
             input_format=config_data.get("input_format", "Professional and specific queries"),
             expected_output_format=config_data.get("expected_output_format", "Detailed responses with citations")
         )
+        
+        # Create filtration config to ensure quality
+        filtration = FiltrationConfig(
+            max_quality_retries=5
+        )
+        
         self.synthesizer = Synthesizer(
             model=self.model,
             evolution_config=self.evolution_config,
             styling_config=self.styling_config,
-            filtration_config=FiltrationConfig()
+            filtration_config=filtration
         )
 
     def _try_generate_with_fallback(self, paths: List[str], generate_func, **kwargs):
@@ -99,6 +105,13 @@ class DatasetGenerator:
         """
         # Reset internal list to ensure file is clean
         self.synthesizer.synthetic_goldens = []
+        
+        # Common high-quality chunking parameters
+        chunk_args = {
+            "chunk_size": 1024,  # Larger chunks for better context quality
+            "chunk_overlap": 100  # Overlap to prevent splitting sentences/context
+        }
+        kwargs.update(chunk_args)
         
         try:
             # First attempt: Try reading documents directly (including PDFs)
@@ -148,8 +161,9 @@ class DatasetGenerator:
         self._try_generate_with_fallback(
             paths,
             self.synthesizer.generate_goldens_from_docs,
-            max_goldens_per_context=2,
-            include_expected_output=True
+            max_goldens_per_context=5,
+            include_expected_output=True,
+            num_evolutions=3 # Explicitly pass evolutions count
         )
         self.synthesizer.save_as(file_type='json', directory="data/synthetic_data", file_name="single_turn_goldens")
 
@@ -158,6 +172,6 @@ class DatasetGenerator:
         self._try_generate_with_fallback(
             paths,
             self.synthesizer.generate_conversational_goldens_from_docs,
-            max_goldens_per_context=3
+            max_goldens_per_context=4
         )
         self.synthesizer.save_as(file_type='json', directory="data/synthetic_data", file_name="multi_turn_goldens")
