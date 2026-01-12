@@ -1,5 +1,6 @@
 import pytest
 import os
+import json
 from deepeval import assert_test
 from deepeval.test_case import LLMTestCase, ConversationalTestCase, Turn
 from deepeval.dataset import EvaluationDataset
@@ -21,6 +22,15 @@ multi_ds.add_goldens_from_json_file(file_path="data/synthetic_data/multi_turn_go
 def test_fact_retrieval(golden):
     assistant = ChatbotAssistant()
     actual_output = assistant.generate_response(golden.input)
+    
+    # Print structured details for valid extraction
+    details = {
+        "input": golden.input,
+        "actual": str(actual_output),
+        "expected": golden.expected_output,
+        "context": golden.context
+    }
+    print(f"\nTEST_DETAILS_JSON:{json.dumps(details)}")
     
     test_case = LLMTestCase(
         input=golden.input,
@@ -55,8 +65,15 @@ def test_conversation_quality(convo_golden):
     )
 
     for test_case in test_cases:
+        # Print structured details for valid extraction
+        details = {
+            "messages": [t.content for t in test_case.turns],
+            "expected_outcome": "Professional and accurate response" 
+        }
+        print(f"\nTEST_DETAILS_JSON:{json.dumps(details)}")
+        
         metric = ConversationalGEval(
-            name="Professionalism & Accuracy",
-            criteria="Does the bot maintain the Clark Safari persona and provide accurate info?"
+            name=os.getenv("EVAL_METRIC_NAME", "Professionalism & Accuracy"),
+            criteria=os.getenv("EVAL_METRIC_CRITERIA", "Does the bot maintain the Clark Safari persona and provide accurate info?")
         )
         assert_test(test_case, [metric])

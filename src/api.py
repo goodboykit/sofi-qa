@@ -94,6 +94,9 @@ class ConfigUpdate(BaseModel):
     expected_output_format: str
     reasoning_weight: float
     multicontext_weight: float
+    api_key: Optional[str] = None
+    eval_metric_name: Optional[str] = "Professionalism & Accuracy"
+    eval_metric_criteria: Optional[str] = "Does the bot maintain the Clark Safari persona and provide accurate info?"
 
 
 # ============ Config Endpoints ============
@@ -111,7 +114,10 @@ async def get_config():
         "input_format": "Professional and specific queries",
         "expected_output_format": "Detailed responses with citations",
         "reasoning_weight": 0.5,
-        "multicontext_weight": 0.5
+        "multicontext_weight": 0.5,
+        "api_key": "",
+        "eval_metric_name": "Professionalism & Accuracy",
+        "eval_metric_criteria": "Does the bot maintain the Clark Safari persona and provide accurate info?"
     }
 
 
@@ -409,12 +415,14 @@ def run_evaluation_job(job_id: str):
         tests = []
         for line in output.split('\n'):
             if '::test_' in line:
+                # Capture the test name after ::, e.g. test_fact_retrieval[golden0]
+                match = re.search(r'::(test_\w+(?:\[.*?\])?)', line)
+                test_name = match.group(1) if match else line.split('::')[-1].split(' ')[0]
+                
                 if 'PASSED' in line:
-                    test_name = re.search(r'test_\w+\[?\w*\]?', line)
-                    tests.append({"name": test_name.group() if test_name else line, "status": "passed"})
+                    tests.append({"name": test_name, "status": "passed"})
                 elif 'FAILED' in line:
-                    test_name = re.search(r'test_\w+\[?\w*\]?', line)
-                    tests.append({"name": test_name.group() if test_name else line, "status": "failed"})
+                    tests.append({"name": test_name, "status": "failed"})
         
         # Get summary
         passed = len([t for t in tests if t["status"] == "passed"])
@@ -489,49 +497,138 @@ async def stream_evaluation():
         
         yield {"event": "log", "data": "Starting pytest..."}
         
-        # Use sys.executable to find pytest in the current venv (works on Windows & Mac/Linux)
+        # Load current config to pass evaluation criteria
+        env_vars = {**os.environ, "PYTHONUNBUFFERED": "1"}
+        config_path = DATA_DIR / "generation_config.json"
+        if config_path.exists():
+            try:
+                with open(config_path, "r", encoding="utf-8") as f:
+                    conf = json.load(f)
+                    if "eval_metric_name" in conf:
+                        env_vars["EVAL_METRIC_NAME"] = conf["eval_metric_name"]
+                    if "eval_metric_criteria" in conf:
+                        env_vars["EVAL_METRIC_CRITERIA"] = conf["eval_metric_criteria"]
+                    if "api_key" in conf and conf["api_key"]:
+                        env_vars["OPENAI_API_KEY"] = conf["api_key"]
+            except:
+                pass
+
+        # Use sys.executable to find pytest in the current venv
+        # -s is needed to capture DeepEval's stdout output (metrics/scores)
         process = subprocess.Popen(
-            [sys.executable, "-m", "pytest", "tests/", "-v", "--tb=short", "-x"],
+            [sys.executable, "-m", "pytest", "tests/", "-v", "--tb=short", "-s"],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
             bufsize=1,
             cwd=str(BASE_DIR),
-            env={**os.environ, "PYTHONUNBUFFERED": "1"}
+            env=env_vars
         )
         
         tests = []
+        failure_map = {}
+        in_failures_section = False
+        current_failure_test = None
+        current_test_metrics = []
+        current_test_details = None
         
         # Stream output line by line
         for line in iter(process.stdout.readline, ''):
             if not line:
                 break
             
-            line = line.rstrip()
+            line_str = line.rstrip()
             
-            # Parse test results
-            if '::test_' in line:
-                if 'PASSED' in line:
-                    test_name = re.search(r'test_\w+\[?\w*\]?', line)
-                    tests.append({"name": test_name.group() if test_name else line, "status": "passed"})
-                    yield {"event": "test", "data": json.dumps({"name": test_name.group() if test_name else line, "status": "passed"})}
-                elif 'FAILED' in line:
-                    test_name = re.search(r'test_\w+\[?\w*\]?', line)
-                    tests.append({"name": test_name.group() if test_name else line, "status": "failed"})
-                    yield {"event": "test", "data": json.dumps({"name": test_name.group() if test_name else line, "status": "failed"})}
+            # Capture potential metric lines (DeepEval usually prints "Metric: ...")
+            # We look for lines containing typical metric keywords
+            if any(x in line_str for x in ["Metric:", "Score:", "Reason:", "faithfulness", "answer_relevancy"]):
+                 if not line_str.startswith("tests/"): # Avoid capturing the test runner line itself
+                    current_test_metrics.append(line_str.strip())
+
+            # Capture TEST_DETAILS_JSON from user-defined print statements
+            if "TEST_DETAILS_JSON:" in line_str:
+                try:
+                    json_str = line_str.split("TEST_DETAILS_JSON:", 1)[1]
+                    current_test_details = json.loads(json_str)
+                except:
+                    pass
+
+            # 1. Parse Real-time Results
+            if '::test_' in line_str and not in_failures_section:
+                match = re.search(r'::(test_\w+(?:\[.*?\])?)', line_str)
+                test_name = match.group(1) if match else line_str.split('::')[-1].split(' ')[0]
+                
+                # Format specific metrics for this test if available
+                # We take the last few collected metrics as they likely belong to this test
+                captured_metrics = "\n".join(current_test_metrics[-5:]) if current_test_metrics else "Passed (Metrics validated)"
+                
+                # Attach details if we found them recently (in the last few lines)
+                details = None
+                if current_test_details:
+                     details = current_test_details
+                     current_test_details = None # Reset after assignment
+                
+                if 'PASSED' in line_str:
+                    tests.append({"name": test_name, "status": "passed", "metrics": captured_metrics, "details": details})
+                    yield {"event": "test", "data": json.dumps({"name": test_name, "status": "passed", "metrics": captured_metrics, "details": details})}
+                    current_test_metrics = [] # Reset after assignment
+                elif 'FAILED' in line_str:
+                    tests.append({"name": test_name, "status": "failed", "details": details})
+                    yield {"event": "test", "data": json.dumps({"name": test_name, "status": "failed", "details": details})}
+                    current_test_metrics = [] # Reset after assignment
             
+            # 2. Detect Failures Section start
+            if "==== FAILURES ====" in line_str:
+                in_failures_section = True
+            
+            # 3. Parse Failure Details
+            if in_failures_section:
+                # Detect test header line pattern: _________ test_name[param] _________
+                # Regex looks for at least 3 underscores, space, test name, space, 3 underscores
+                # We also handle case where test name might be just function name without params
+                header_match = re.search(r'_{3,} ((?:test_\w+)(?:\[.*?\])?) _{3,}', line_str)
+                if header_match:
+                    current_failure_test = header_match.group(1)
+                    failure_map[current_failure_test] = []
+                elif current_failure_test:
+                    stripped = line_str.strip()
+                    # Capture E lines (exception message)
+                    if stripped.startswith('E '):
+                         failure_map[current_failure_test].append(stripped[2:])
+                    # Also capture lines that look like assertion errors if we haven't found E lines yet
+                    elif 'Error:' in stripped and not failure_map[current_failure_test]:
+                         failure_map[current_failure_test].append(stripped)
+
             # Send log line
-            yield {"event": "log", "data": line}
+            yield {"event": "log", "data": line_str}
             await asyncio.sleep(0.01)  # Small delay to prevent overwhelming
         
         process.wait()
         
+        # Update failed tests with reasons
+        processed_tests = []
+        for test in tests:
+            if test["status"] == "failed":
+                reason = None
+                # Try exact match
+                if test["name"] in failure_map:
+                    reason = "\n".join(failure_map[test["name"]])
+                # Try match without params if exact match fails
+                elif test["name"].split('[')[0] in failure_map:
+                    reason = "\n".join(failure_map[test["name"].split('[')[0]])
+                # Fallback: if we only have one failure map entry, assume it belongs to this test
+                elif len(failure_map) == 1:
+                     reason = "\n".join(list(failure_map.values())[0])
+                
+                test["reason"] = reason if reason else "Assertion failed. (Could not parse specific details from logs)"
+            processed_tests.append(test)
+
         # Send summary
-        passed = len([t for t in tests if t["status"] == "passed"])
-        failed = len([t for t in tests if t["status"] == "failed"])
+        passed = len([t for t in processed_tests if t["status"] == "passed"])
+        failed = len([t for t in processed_tests if t["status"] == "failed"])
         
         yield {"event": "complete", "data": json.dumps({
-            "tests": tests,
+            "tests": processed_tests,
             "passed": passed,
             "failed": failed,
             "total": passed + failed

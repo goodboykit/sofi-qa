@@ -1,8 +1,11 @@
 {
-  "task": "Expert Customer Support",
+  "task": "Expert Customer Supporta",
   "scenario": "A customer interacting with an automated assistant.",
   "input_format": "Professional and specific queries",
   "expected_output_format": "Detailed responses with citations",
-  "reasoning_weight": 0.5,
-  "multicontext_weight": 0.5
+  "reasoning_weight": 0.8,
+  "multicontext_weight": 0.7,
+  "api_key": null,
+  "eval_metric_name": "Professionalism and Accuracy",
+  "eval_metric_criteria": "Does the bot maintain the Clark Safari persona and provide accurate info?"
 }

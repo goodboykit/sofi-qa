@@ -1312,11 +1312,15 @@ body {
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
   overflow: hidden;
-  flex: 1;
   display: flex;
   flex-direction: column;
+  flex: 1;
+  /* Key for taking available space */
   min-height: 0;
+  /* Crucial for flex child scrolling */
 }
+
+/* .documents-body moved to single declaration below */
 
 .documents-card::before {
   content: '';
@@ -1348,7 +1352,28 @@ body {
   padding: 16px;
   flex: 1;
   min-height: 0;
+  /* Crucial for flex child scrolling */
   overflow-y: auto;
+
+  /* Enable vertical scrolling */
+}
+
+/* Custom Scrollbar for Results */
+.documents-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.documents-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.documents-body::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.documents-body::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 .documents-list {
