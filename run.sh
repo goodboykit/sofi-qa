@@ -139,8 +139,19 @@ else
     source "$SCRIPT_DIR/.venv/bin/activate"
 fi
 
-# Install requirements
-pip install -r "$SCRIPT_DIR/requirements.txt"
+# Check if deepeval is installed, if not install all requirements
+echo -e "${CYAN}📦 Checking Python dependencies...${NC}"
+if ! python -c "import deepeval" 2>/dev/null; then
+    echo -e "${YELLOW}⚠️  DeepEval not found. Installing all dependencies...${NC}"
+    pip install --upgrade pip -q
+    pip install -r "$SCRIPT_DIR/requirements.txt"
+    echo -e "${GREEN}✅ All Python packages installed${NC}"
+else
+    echo -e "   ${GREEN}✓${NC} DeepEval found"
+    # Quick install to ensure all packages are up to date (quiet mode)
+    pip install -r "$SCRIPT_DIR/requirements.txt" -q
+    echo -e "   ${GREEN}✓${NC} Dependencies up to date"
+fi
 
 # Check if node_modules exists in frontend
 if [ ! -d "$SCRIPT_DIR/frontend/node_modules" ]; then

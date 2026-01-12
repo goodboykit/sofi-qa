@@ -133,15 +133,39 @@ if (Test-Path $VenvActivate) {
     Write-Host "[!] Could not find Activate.ps1, assuming python is in path or using global." -ForegroundColor Yellow
 }
 
-# 3. Install Requirements
-Write-Host "[*] Installing Python dependencies (this may take a moment)..." -ForegroundColor Cyan
+# 3. Check if DeepEval is installed, if not install all requirements
+Write-Host "[*] Checking Python dependencies..." -ForegroundColor Cyan
+$DeepEvalInstalled = $false
 try {
-    pip install -r (Join-Path $ScriptDir "requirements.txt") --quiet
-    Write-Host "    [OK] Python dependencies installed" -ForegroundColor Green
+    python -c "import deepeval" 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        $DeepEvalInstalled = $true
+    }
 } catch {
-    Write-Host "[X] Failed to install Python dependencies!" -ForegroundColor Red
-    Write-Host "    Error: $_" -ForegroundColor Red
-    exit 1
+    $DeepEvalInstalled = $false
+}
+
+if (-not $DeepEvalInstalled) {
+    Write-Host "[!] DeepEval not found. Installing all dependencies..." -ForegroundColor Yellow
+    try {
+        pip install --upgrade pip --quiet
+        pip install -r (Join-Path $ScriptDir "requirements.txt")
+        Write-Host "[OK] All Python packages installed" -ForegroundColor Green
+    } catch {
+        Write-Host "[X] Failed to install Python dependencies!" -ForegroundColor Red
+        Write-Host "    Error: $_" -ForegroundColor Red
+        exit 1
+    }
+} else {
+    Write-Host "    [OK] DeepEval found" -ForegroundColor Green
+    
+    # Quick install to ensure all packages are up to date
+    try {
+        pip install -r (Join-Path $ScriptDir "requirements.txt") --quiet
+        Write-Host "    [OK] Dependencies up to date" -ForegroundColor Green
+    } catch {
+        Write-Host "[!] Some packages may have failed to update, continuing..." -ForegroundColor Yellow
+    }
 }
 
 # 4. Check Frontend Dependencies

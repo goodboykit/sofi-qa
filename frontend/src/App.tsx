@@ -616,32 +616,34 @@ function App() {
                     <p className="hero-desc">
                       Transform documents into high-quality question-answer pairs using DeepEval's synthesis engine.
                     </p>
-                    <button
-                      className="btn btn-primary"
-                      onClick={start}
-                      disabled={running || status !== 'online'}
-                    >
-                      {running ? (
-                        <>
-                          <span className="spinner" />
-                          Processing
-                        </>
-                      ) : (
-                        <>
-                          {Icons.play}
-                          Start Synthesis
-                        </>
-                      )}
-                    </button>
-                    {running && (
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                       <button
-                        className="btn btn-stop"
-                        onClick={stop}
+                        className="btn btn-primary"
+                        onClick={start}
+                        disabled={running || status !== 'online'}
                       >
-                        {Icons.stop}
-                        Stop
+                        {running ? (
+                          <>
+                            <span className="spinner" />
+                            Processing
+                          </>
+                        ) : (
+                          <>
+                            {Icons.play}
+                            Start Synthesis
+                          </>
+                        )}
                       </button>
-                    )}
+                      {running && (
+                        <button
+                          className="btn btn-stop"
+                          onClick={stop}
+                        >
+                          {Icons.stop}
+                          Stop
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
 

@@ -9,7 +9,7 @@ SoFi-QA is a tool that helps you turn your documents (like PDFs or Word files) i
 ## ✨ Features
 
 - **📄 File Manager**: Upload and organize your PDF and DOCX files.
-- **🤖 Smart AI**: Creates **Q&A pairs** and **Conversations** automatically using GPT-4o-mini.
+- **🤖 Smart AI**: Creates **Q&A pairs** and **Conversations** automatically using **GPT-4o-mini**.
 - **⚙️ Easy Settings**: Change how the AI thinks and writes with simple controls.
 - **🖥️ Cool Design**: A modern, dark-themed dashboard that is easy to use.
 - **💬 Chat View**: See your data look like real text messages (User vs Bot).
@@ -34,14 +34,13 @@ SoFi-QA is a tool that helps you turn your documents (like PDFs or Word files) i
     cd sofi-qa
     ```
 
-2.  **Set Your Password (API Key)**
+2.  **Set Your API Key**
     Create a file called `.env` in the main folder and put this inside:
+    
     ```
-    OPENAI_API_KEY=sk-your-key-here
+    OPENAI_API_KEY=sk-your-openai-key-here
     ```
-    Or set it in your terminal:
-    - *Mac/Linux*: `export OPENAI_API_KEY="sk-..."`
-    - *Windows*: `$env:OPENAI_API_KEY="sk-..."`
+    You can get one at: https://platform.openai.com/api-keys
 
 ### ▶️ Running the App
 
