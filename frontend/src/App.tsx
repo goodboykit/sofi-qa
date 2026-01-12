@@ -147,6 +147,23 @@ interface EvalResult {
   output: string;
 }
 
+// Config Interface
+interface Config {
+  task: string;
+  scenario: string;
+  input_format: string;
+  expected_output_format: string;
+  reasoning_weight: number;
+  multicontext_weight: number;
+  api_key?: string;
+  eval_metric_name?: string;
+  eval_metric_criteria?: string;
+  model_name?: string;
+  num_evolutions?: number;
+  num_goldens?: number;
+  eval_threshold?: number;
+}
+
 type Page = 'synthesis' | 'documents' | 'configuration' | 'data' | 'evaluation';
 
 // ============================================
@@ -235,7 +252,7 @@ function App() {
   }, [logs]);
 
   // Configuration state
-  const [config, setConfig] = useState({
+  const [config, setConfig] = useState<Config>({
     task: '',
     scenario: '',
     input_format: '',
@@ -244,7 +261,11 @@ function App() {
     multicontext_weight: 0.5,
     api_key: '',
     eval_metric_name: '',
-    eval_metric_criteria: ''
+    eval_metric_criteria: '',
+    model_name: 'gpt-4o-mini',
+    num_evolutions: 2,
+    num_goldens: 2,
+    eval_threshold: 0.7
   });
   const [showConfigModal, setShowConfigModal] = useState(false);
 
@@ -803,88 +824,162 @@ function App() {
                 <div className="card-container" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
 
                   <div className="documents-card" style={{ height: '100%' }}>
-                    <div className="documents-header">
+                    <div className="documents-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span className="documents-title">System Configuration</span>
+                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)', maxWidth: '500px', textAlign: 'right' }}>
+                        Configure the behavior of the AI synthesis engine. These settings apply to all future synthesis jobs.
+                      </span>
                     </div>
 
                     <div className="documents-body" style={{ padding: '32px', overflowY: 'auto' }}>
-                      <p style={{ color: 'var(--text-secondary)', marginBottom: '32px', fontSize: '13px' }}>
-                        Configure the behavior of the AI synthesis engine. These settings apply to all future synthesis jobs.
-                      </p>
+                      {/* Original Help Text Removed (moved to header) */}
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '48px' }}>
 
                         {/* Left Column: Global Synthesis Settings */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                          <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', color: 'var(--text-primary)', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
-                            Global Synthesis Settings
-                          </h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                          <div>
+                            <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '4px', color: 'var(--text-primary)' }}>
+                              Global Synthesis Settings
+                            </h3>
+                            <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                              Control how the AI generates synthetic data. Use these settings to define the personality and difficulty of the Q&A pairs.
+                            </p>
+                            <div style={{ height: '1px', background: 'var(--border)', marginTop: '12px', marginBottom: '16px' }} />
+                          </div>
+
+                          {/* Model Selection */}
+                          <div className="form-group">
+                            <label className="form-label" style={{ fontSize: '13px', fontWeight: 500 }}>AI Model</label>
+                            <select
+                              className="form-input"
+                              style={{ appearance: 'none', backgroundImage: `url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right .7em top 50%', backgroundSize: '.65em auto' }}
+                              value={config.model_name}
+                              onChange={e => setConfig({ ...config, model_name: e.target.value })}
+                            >
+                              <option value="gpt-4o-mini">gpt-4o-mini (Recommended - Fast & Cost Effective)</option>
+                              <option value="gpt-4o">gpt-4o (High Intelligence - More Expensive)</option>
+                              <option value="gpt-3.5-turbo">gpt-3.5-turbo (Legacy)</option>
+                            </select>
+                            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                              Select the brain used for generating data. 'gpt-4o-mini' is usually sufficient.
+                            </p>
+                          </div>
 
                           <div className="form-group">
-                            <label className="form-label" style={{ fontSize: '13px' }}>Task Description</label>
+                            <label className="form-label" style={{ fontSize: '13px', fontWeight: 500 }}>Task Description</label>
                             <input
                               className="form-input"
                               value={config.task}
                               onChange={e => setConfig({ ...config, task: e.target.value })}
-                              placeholder="e.g. Expert Customer Support"
+                              placeholder="e.g. Expert Customer Support Agent"
                             />
+                            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                              What role should the AI adopt when generating questions?
+                            </p>
                           </div>
 
                           <div className="form-group">
-                            <label className="form-label" style={{ fontSize: '13px' }}>Scenario</label>
+                            <label className="form-label" style={{ fontSize: '13px', fontWeight: 500 }}>Scenario</label>
                             <textarea
                               className="form-input"
-                              style={{ minHeight: '100px', resize: 'vertical' }}
+                              style={{ minHeight: '80px', resize: 'vertical' }}
                               value={config.scenario}
                               onChange={e => setConfig({ ...config, scenario: e.target.value })}
-                              placeholder="Describe the interaction scenario..."
+                              placeholder="e.g. A user is asking about account features..."
                             />
+                            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                              Describe the context of the conversation.
+                            </p>
                           </div>
 
-                          <div className="form-group">
-                            <label className="form-label" style={{ fontSize: '13px' }}>Input Format</label>
-                            <input
-                              className="form-input"
-                              value={config.input_format}
-                              onChange={e => setConfig({ ...config, input_format: e.target.value })}
-                            />
+                          {/* Data Volume & Complexity Grid */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                            <div className="form-group">
+                              <label className="form-label" style={{ fontSize: '13px', fontWeight: 500 }}>Data Volume</label>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <input
+                                  type="number"
+                                  min="1" max="10"
+                                  className="form-input"
+                                  style={{ padding: '8px' }}
+                                  value={config.num_goldens}
+                                  onChange={e => setConfig({ ...config, num_goldens: parseInt(e.target.value) })}
+                                />
+                              </div>
+                              <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                                Q&A pairs per document.
+                              </p>
+                            </div>
+                            <div className="form-group">
+                              <label className="form-label" style={{ fontSize: '13px', fontWeight: 500 }}>Complexity</label>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <input
+                                  type="number"
+                                  min="1" max="5"
+                                  className="form-input"
+                                  style={{ padding: '8px' }}
+                                  value={config.num_evolutions}
+                                  onChange={e => setConfig({ ...config, num_evolutions: parseInt(e.target.value) })}
+                                />
+                              </div>
+                              <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                                Higher = harder questions.
+                              </p>
+                            </div>
                           </div>
 
-                          <div className="form-group">
-                            <label className="form-label" style={{ fontSize: '13px' }}>Expected Output Format</label>
-                            <input
-                              className="form-input"
-                              value={config.expected_output_format}
-                              onChange={e => setConfig({ ...config, expected_output_format: e.target.value })}
-                            />
+                          {/* Formatting */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                            <div className="form-group">
+                              <label className="form-label" style={{ fontSize: '13px', fontWeight: 500 }}>Input Style</label>
+                              <input
+                                className="form-input"
+                                value={config.input_format}
+                                onChange={e => setConfig({ ...config, input_format: e.target.value })}
+                                placeholder="e.g. Short queries"
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label className="form-label" style={{ fontSize: '13px', fontWeight: 500 }}>Output Style</label>
+                              <input
+                                className="form-input"
+                                value={config.expected_output_format}
+                                onChange={e => setConfig({ ...config, expected_output_format: e.target.value })}
+                                placeholder="e.g. Detailed answers"
+                              />
+                            </div>
                           </div>
 
                           {/* Weights Grid */}
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                            <div className="form-group">
-                              <label className="form-label" style={{ fontSize: '13px' }}>Reasoning Weight</label>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <input
-                                  type="range"
-                                  min="0" max="1" step="0.1"
-                                  style={{ flex: 1 }}
-                                  value={config.reasoning_weight}
-                                  onChange={e => setConfig({ ...config, reasoning_weight: parseFloat(e.target.value) })}
-                                />
-                                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', width: '24px', textAlign: 'right' }}>{config.reasoning_weight}</span>
+                          <div style={{ background: 'var(--bg-card-hover)', padding: '16px', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                            <label className="form-label" style={{ fontSize: '12px', fontWeight: 600, marginBottom: '12px', display: 'block' }}>GENERATION MIX</label>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                              <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: '12px' }}>Reasoning Focus</label>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <input
+                                    type="range"
+                                    min="0" max="1" step="0.1"
+                                    style={{ flex: 1, backgroundSize: `${(config.reasoning_weight || 0) * 100}% 100%` }}
+                                    value={config.reasoning_weight}
+                                    onChange={e => setConfig({ ...config, reasoning_weight: parseFloat(e.target.value) })}
+                                  />
+                                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)', width: '24px', textAlign: 'right' }}>{config.reasoning_weight}</span>
+                                </div>
                               </div>
-                            </div>
-                            <div className="form-group">
-                              <label className="form-label" style={{ fontSize: '13px' }}>Multi-Context Weight</label>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <input
-                                  type="range"
-                                  min="0" max="1" step="0.1"
-                                  style={{ flex: 1 }}
-                                  value={config.multicontext_weight}
-                                  onChange={e => setConfig({ ...config, multicontext_weight: parseFloat(e.target.value) })}
-                                />
-                                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', width: '24px', textAlign: 'right' }}>{config.multicontext_weight}</span>
+                              <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: '12px' }}>Multi-Context Focus</label>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <input
+                                    type="range"
+                                    min="0" max="1" step="0.1"
+                                    style={{ flex: 1, backgroundSize: `${(config.multicontext_weight || 0) * 100}% 100%` }}
+                                    value={config.multicontext_weight}
+                                    onChange={e => setConfig({ ...config, multicontext_weight: parseFloat(e.target.value) })}
+                                  />
+                                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)', width: '24px', textAlign: 'right' }}>{config.multicontext_weight}</span>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -892,30 +987,59 @@ function App() {
                         </div>
 
                         {/* Right Column: Evaluation Settings */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                          <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px', color: 'var(--text-primary)', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
-                            Evaluation Settings
-                          </h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                          <div>
+                            <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '4px', color: 'var(--text-primary)' }}>
+                              Evaluation Settings
+                            </h3>
+                            <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                              Define what "Quality" looks like. The system will use these rules to grade the generated chatbot responses.
+                            </p>
+                            <div style={{ height: '1px', background: 'var(--border)', marginTop: '12px', marginBottom: '16px' }} />
+                          </div>
 
                           <div className="form-group">
-                            <label className="form-label" style={{ fontSize: '13px' }}>Metric Name</label>
+                            <label className="form-label" style={{ fontSize: '13px', fontWeight: 500 }}>Metric Name</label>
                             <input
                               className="form-input"
                               value={config.eval_metric_name || ''}
                               onChange={e => setConfig({ ...config, eval_metric_name: e.target.value })}
-                              placeholder="e.g. Professionalism & Accuracy"
+                              placeholder="e.g. Professionalism, Accuracy, Empathy"
                             />
+                            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                              Give a name to your quality standard.
+                            </p>
+                          </div>
+
+                          <div className="form-group">
+                            <label className="form-label" style={{ fontSize: '13px', fontWeight: 500 }}>Pass Threshold</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <input
+                                type="range"
+                                min="0" max="1" step="0.1"
+                                style={{ flex: 1, backgroundSize: `${(config.eval_threshold || 0) * 100}% 100%` }}
+                                value={config.eval_threshold}
+                                onChange={e => setConfig({ ...config, eval_threshold: parseFloat(e.target.value) })}
+                              />
+                              <span style={{ fontSize: '12px', color: 'var(--text-secondary)', width: '24px', textAlign: 'right' }}>{config.eval_threshold}</span>
+                            </div>
+                            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                              Minimum score (0 to 1) required to pass the test. Higher is stricter.
+                            </p>
                           </div>
 
                           <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                            <label className="form-label" style={{ fontSize: '13px' }}>Metric Criteria</label>
+                            <label className="form-label" style={{ fontSize: '13px', fontWeight: 500 }}>Grading Criteria</label>
                             <textarea
                               className="form-input"
-                              style={{ flex: 1, resize: 'none', minHeight: '200px' }}
+                              style={{ flex: 1, resize: 'none', minHeight: '200px', fontFamily: 'monospace', fontSize: '12px', lineHeight: '1.5' }}
                               value={config.eval_metric_criteria || ''}
                               onChange={e => setConfig({ ...config, eval_metric_criteria: e.target.value })}
-                              placeholder="Define the criteria for success..."
+                              placeholder="Describe exactly what makes a response 'Good' vs 'Bad'. e.g., 'The answer must be polite, concise, and contain at least one citation.'"
                             />
+                            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                              This is the prompt the judge uses. Be specific!
+                            </p>
                           </div>
 
                         </div>
@@ -1032,102 +1156,117 @@ function App() {
             {currentPage === 'evaluation' && (
               <main className="main">
                 {/* Hero */}
-                <div className="hero-card">
-                  <div className="hero-content">
-                    <h1 className="hero-title">Run <span>Quality Tests</span></h1>
-                    <p className="hero-desc">
-                      Check if your generated Q&A pairs are relevant and faithful to the source documents.
-                    </p>
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                      <button
-                        className="btn btn-primary"
-                        onClick={() => {
-                          if (status !== 'online') {
-                            setEvalMessage('Backend not available');
-                            return;
-                          }
-                          setEvalRunning(true);
-                          setEvalResult(null);
-                          setEvalLogs([]);
-                          setEvalMessage('Connecting...');
-
-                          const eventSource = new EventSource('http://localhost:8000/api/evaluation/stream');
-                          evalEventSourceRef.current = eventSource;
-
-                          eventSource.addEventListener('log', (e) => {
-                            setEvalLogs(prev => [...prev, e.data]);
-                            setEvalMessage('Running tests...');
-                            // Auto-scroll
-                            if (evalConsoleRef.current) {
-                              evalConsoleRef.current.scrollTop = evalConsoleRef.current.scrollHeight;
-                            }
-                          });
-
-                          eventSource.addEventListener('test', (e) => {
-                            const test = JSON.parse(e.data);
-                            setEvalLogs(prev => [...prev, `${test.status === 'passed' ? '✓' : '✗'} ${test.name}`]);
-                          });
-
-                          eventSource.addEventListener('complete', (e) => {
-                            const result = JSON.parse(e.data);
-                            setEvalResult(result);
-                            setEvalMessage(`Completed: ${result.passed} passed, ${result.failed} failed`);
-                            setEvalRunning(false);
-                            evalEventSourceRef.current = null;
-                            eventSource.close();
-                          });
-
-                          eventSource.addEventListener('error', (e: any) => {
-                            if (e.data) {
-                              setEvalMessage(`Error: ${e.data}`);
-                            } else {
-                              setEvalMessage('Connection closed');
-                            }
-                            setEvalRunning(false);
-                            evalEventSourceRef.current = null;
-                            eventSource.close();
-                          });
-
-                          eventSource.onerror = () => {
-                            setEvalMessage('Connection error');
-                            setEvalRunning(false);
-                            evalEventSourceRef.current = null;
-                            eventSource.close();
-                          };
-                        }}
-                        disabled={evalRunning || status !== 'online'}
-                      >
-                        {Icons.beaker}
-                        Run Tests
-                      </button>
-                      {evalRunning && (
+                {!evalResult && (
+                  <div className="hero-card">
+                    <div className="hero-content">
+                      <h1 className="hero-title">Run <span>Quality Tests</span></h1>
+                      <p className="hero-desc">
+                        Check if your generated Q&A pairs are relevant and faithful to the source documents.
+                      </p>
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                         <button
-                          className="btn btn-danger"
+                          className="btn btn-primary"
                           onClick={() => {
-                            if (evalEventSourceRef.current) {
-                              evalEventSourceRef.current.close();
-                              evalEventSourceRef.current = null;
+                            if (status !== 'online') {
+                              setEvalMessage('Backend not available');
+                              return;
                             }
-                            setEvalRunning(false);
-                            setEvalMessage('Stopped by user');
-                            setEvalLogs(prev => [...prev, '--- Test run stopped by user ---']);
+                            setEvalRunning(true);
+                            setEvalResult(null);
+                            setEvalLogs([]);
+                            setEvalMessage('Connecting...');
+
+                            const eventSource = new EventSource('http://localhost:8000/api/evaluation/stream');
+                            evalEventSourceRef.current = eventSource;
+
+                            eventSource.addEventListener('log', (e) => {
+                              setEvalLogs(prev => [...prev, e.data]);
+                              setEvalMessage('Running tests...');
+                              // Auto-scroll
+                              if (evalConsoleRef.current) {
+                                evalConsoleRef.current.scrollTop = evalConsoleRef.current.scrollHeight;
+                              }
+                            });
+
+                            eventSource.addEventListener('test', (e) => {
+                              const test = JSON.parse(e.data);
+                              setEvalLogs(prev => [...prev, `${test.status === 'passed' ? '✓' : '✗'} ${test.name}`]);
+                            });
+
+                            eventSource.addEventListener('complete', (e) => {
+                              const result = JSON.parse(e.data);
+                              setEvalResult(result);
+                              setEvalMessage(`Completed: ${result.passed} passed, ${result.failed} failed`);
+                              setEvalRunning(false);
+                              evalEventSourceRef.current = null;
+                              eventSource.close();
+                            });
+
+                            eventSource.addEventListener('error', (e: any) => {
+                              if (e.data) {
+                                setEvalMessage(`Error: ${e.data}`);
+                              } else {
+                                setEvalMessage('Connection closed');
+                              }
+                              setEvalRunning(false);
+                              evalEventSourceRef.current = null;
+                              eventSource.close();
+                            });
+
+                            eventSource.onerror = () => {
+                              setEvalMessage('Connection error');
+                              setEvalRunning(false);
+                              evalEventSourceRef.current = null;
+                              eventSource.close();
+                            };
                           }}
+                          disabled={evalRunning || status !== 'online'}
                         >
-                          {Icons.stop}
-                          Stop
+                          {Icons.beaker}
+                          Run Tests
                         </button>
+                        {evalRunning && (
+                          <button
+                            className="btn btn-danger"
+                            onClick={() => {
+                              if (evalEventSourceRef.current) {
+                                evalEventSourceRef.current.close();
+                                evalEventSourceRef.current = null;
+                              }
+                              setEvalRunning(false);
+                              setEvalMessage('Stopped by user');
+                              setEvalLogs(prev => [...prev, '--- Test run stopped by user ---']);
+                            }}
+                          >
+                            {Icons.stop}
+                            Stop
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Logs - Only show if NO results (so we don't hide them if the user didn't run tests yet, OR if tests are running)
+                    Actually user said "remove container of execution log... because it is result right".
+                    So we hide logs fully if results exist.
+                */}
+                {!evalResult && (
+                  <div className="documents-card">
+                    <div className="documents-header">
+                      <span className="documents-title">Execution Logs</span>
+                      <span className="documents-count">{evalLogs.length} lines</span>
+                    </div>
+                    <div className="documents-body console-body" ref={evalConsoleRef}>
+                      {evalLogs.map((log, i) => (
+                        <div key={i} className="console-line">{log}</div>
+                      ))}
+                      {evalLogs.length === 0 && (
+                        <div className="console-line text-muted">Waiting for execution...</div>
                       )}
                     </div>
                   </div>
-                </div>
-
-                {/* Console Output */}
-                {/* Console Output - Hidden per user request */}
-                {/* 
-                <div className="console-card">
-                   ... (hidden for cleaner UI) ...
-                </div> 
-                */}
+                )}
 
                 {/* Results */}
                 {evalResult && (
@@ -1198,135 +1337,160 @@ function App() {
                           </div>
                         </div>
                       </div>
-                      <div className="documents-body" style={{ padding: '12px' }}>
+                      <div className="documents-body" style={{ padding: '12px', flex: 1, overflowY: 'auto', minHeight: 0 }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                          {evalResult.tests.map((test, idx) => (
-                            <div
-                              key={idx}
-                              style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '8px',
-                                padding: '14px 18px',
-                                background: test.status === 'passed' ? 'rgba(74, 222, 128, 0.08)' : 'rgba(248, 113, 113, 0.08)',
-                                borderRadius: '10px',
-                                border: `1px solid ${test.status === 'passed' ? 'rgba(74, 222, 128, 0.25)' : 'rgba(248, 113, 113, 0.25)'}`,
-                                transition: 'transform 0.2s ease, box-shadow 0.2s ease'
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                                <span style={{
-                                  color: test.status === 'passed' ? '#4ade80' : '#f87171',
-                                  width: '22px',
-                                  height: '22px',
-                                  flexShrink: 0
-                                }}>
-                                  {test.status === 'passed' ? Icons.check : Icons.x}
-                                </span>
-                                <span style={{
-                                  flex: 1,
-                                  fontFamily: "'Poppins', sans-serif",
-                                  fontSize: '14px',
-                                  fontWeight: 500,
-                                  color: 'var(--text-primary)'
-                                }}>
-                                  <span style={{ color: 'var(--text-muted)', marginRight: '8px' }}>{idx + 1}.</span>
-                                  {test.name}
-                                </span>
-                                <span style={{
-                                  padding: '6px 12px',
-                                  borderRadius: '6px',
-                                  fontSize: '11px',
-                                  fontWeight: 600,
-                                  textTransform: 'uppercase',
-                                  letterSpacing: '0.5px',
-                                  background: test.status === 'passed' ? 'rgba(74, 222, 128, 0.2)' : 'rgba(248, 113, 113, 0.2)',
-                                  color: test.status === 'passed' ? '#4ade80' : '#f87171'
-                                }}>
-                                  {test.status}
-                                </span>
-                              </div>
+                          {evalResult.tests.length === 0 ? (
+                            <div style={{
+                              padding: '24px',
+                              background: 'rgba(239, 68, 68, 0.1)',
+                              border: '1px solid rgba(239, 68, 68, 0.2)',
+                              borderRadius: '8px',
+                              color: '#ef4444',
+                              fontFamily: 'monospace',
+                              fontSize: '12px',
+                              whiteSpace: 'pre-wrap'
+                            }}>
+                              <strong>Analysis Failed to Produce Results</strong>
+                              <br /><br />
+                              System Output:
+                              <br />
+                              {evalLogs.join('\n') || 'No output logs available.'}
+                            </div>
+                          ) : (
+                            evalResult.tests.map((test, idx) => (
+                              <div
+                                key={idx}
+                                style={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '8px',
+                                  padding: '14px 18px',
+                                  background: test.status === 'passed' ? 'rgba(74, 222, 128, 0.08)' : 'rgba(248, 113, 113, 0.08)',
+                                  borderRadius: '10px',
+                                  border: `1px solid ${test.status === 'passed' ? 'rgba(74, 222, 128, 0.25)' : 'rgba(248, 113, 113, 0.25)'}`,
+                                  transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                                  <span style={{
+                                    color: test.status === 'passed' ? '#4ade80' : '#f87171',
+                                    width: '22px',
+                                    height: '22px',
+                                    flexShrink: 0
+                                  }}>
+                                    {test.status === 'passed' ? Icons.check : Icons.x}
+                                  </span>
+                                  <span style={{
+                                    flex: 1,
+                                    fontFamily: "'Poppins', sans-serif",
+                                    fontSize: '14px',
+                                    fontWeight: 500,
+                                    color: 'var(--text-primary)'
+                                  }}>
+                                    <span style={{ color: 'var(--text-muted)', marginRight: '8px' }}>{idx + 1}.</span>
+                                    {test.name}
+                                  </span>
+                                  <span style={{
+                                    padding: '6px 12px',
+                                    borderRadius: '6px',
+                                    fontSize: '11px',
+                                    fontWeight: 600,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px',
+                                    background: test.status === 'passed' ? 'rgba(74, 222, 128, 0.2)' : 'rgba(248, 113, 113, 0.2)',
+                                    color: test.status === 'passed' ? '#4ade80' : '#f87171'
+                                  }}>
+                                    {test.status}
+                                  </span>
+                                </div>
 
-                              {/* Description / Output */}
-                              <div style={{
-                                marginTop: '8px',
-                                padding: '12px',
-                                background: test.status === 'passed' ? 'rgba(74, 222, 128, 0.1)' : 'rgba(0,0,0,0.2)',
-                                borderRadius: '8px',
-                                fontFamily: 'monospace',
-                                fontSize: '12px',
-                                color: test.status === 'passed' ? '#86efac' : '#fca5a5', // Lighter green for text
-                                whiteSpace: 'pre-wrap',
-                                border: `1px solid ${test.status === 'passed' ? 'rgba(74, 222, 128, 0.2)' : 'rgba(248, 113, 113, 0.2)'}`
-                              }}>
-                                {test.status === 'passed' ? (
-                                  <>
-                                    <strong>result:</strong> {test.name} passed successfully.
-                                    {test.metrics && (
-                                      <div style={{ marginTop: '8px', color: 'var(--text-secondary)' }}>
-                                        {test.metrics}
-                                      </div>
-                                    )}
-                                  </>
-                                ) : (
-                                  test.reason ? (
+                                {/* Description / Output */}
+                                <div style={{
+                                  marginTop: '8px',
+                                  padding: '12px',
+                                  background: test.status === 'passed' ? 'rgba(74, 222, 128, 0.1)' : 'rgba(0,0,0,0.2)',
+                                  borderRadius: '8px',
+                                  fontFamily: 'monospace',
+                                  fontSize: '12px',
+                                  color: test.status === 'passed' ? '#86efac' : '#fca5a5', // Lighter green for text
+                                  whiteSpace: 'pre-wrap',
+                                  border: `1px solid ${test.status === 'passed' ? 'rgba(74, 222, 128, 0.2)' : 'rgba(248, 113, 113, 0.2)'}`
+                                }}>
+                                  {test.status === 'passed' ? (
                                     <>
-                                      <strong>Error:</strong> {test.reason}
+                                      <strong>result:</strong> {test.name} passed successfully.
+                                      {test.metrics && (
+                                        <div style={{ marginTop: '8px', color: 'var(--text-secondary)' }}>
+                                          {test.metrics}
+                                        </div>
+                                      )}
                                     </>
                                   ) : (
-                                    <>
-                                      <strong>Reason:</strong> Test assertion failed. Check console logs for details.
-                                    </>
-                                  )
-                                )}
+                                    test.reason ? (
+                                      <>
+                                        <strong>Error:</strong> {test.reason}
+                                      </>
+                                    ) : (
+                                      <>
+                                        <strong>Reason:</strong> Test assertion failed. Check console logs for details.
+                                      </>
+                                    )
+                                  )}
 
-                                {test.details && (
-                                  <div style={{ marginTop: '12px', borderTop: `1px dashed ${test.status === 'passed' ? 'rgba(74, 222, 128, 0.3)' : 'rgba(248, 113, 113, 0.3)'}`, paddingTop: '12px' }}>
-                                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px' }}>Test Details</div>
-                                    <div style={{ display: 'grid', gap: '8px', fontSize: '12px' }}>
-                                      {test.details.input && (
-                                        <div>
-                                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Input:</span> <span style={{ color: 'var(--text-secondary)' }}>{test.details.input}</span>
-                                        </div>
-                                      )}
-                                      {test.details.messages && (
-                                        <div>
-                                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Conversation:</span>
-                                          <div style={{ marginTop: '4px', paddingLeft: '8px', borderLeft: '2px solid var(--border)' }}>
-                                            {test.details.messages.map((m, i) => (
-                                              <div key={i} style={{ marginBottom: '4px', color: 'var(--text-secondary)' }}>{m}</div>
-                                            ))}
+                                  {test.details && (
+                                    <div style={{ marginTop: '12px', borderTop: `1px dashed ${test.status === 'passed' ? 'rgba(74, 222, 128, 0.3)' : 'rgba(248, 113, 113, 0.3)'}`, paddingTop: '12px' }}>
+                                      <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px' }}>Test Details</div>
+                                      <div style={{ display: 'grid', gap: '8px', fontSize: '12px' }}>
+                                        {test.details.input && (
+                                          <div>
+                                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Input:</span> <span style={{ color: 'var(--text-secondary)' }}>{test.details.input}</span>
                                           </div>
-                                        </div>
-                                      )}
-                                      {test.details.expected && (
-                                        <div>
-                                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Expected:</span> <span style={{ color: 'var(--text-secondary)' }}>{test.details.expected}</span>
-                                        </div>
-                                      )}
-                                      {test.details.expected_outcome && (
-                                        <div>
-                                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Expected Outcome:</span> <span style={{ color: 'var(--text-secondary)' }}>{test.details.expected_outcome}</span>
-                                        </div>
-                                      )}
-                                      {test.details.actual && (
-                                        <div>
-                                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Actual Output:</span> <span style={{ color: 'var(--accent)' }}>{test.details.actual}</span>
-                                        </div>
-                                      )}
+                                        )}
+                                        {test.details.messages && (
+                                          <div>
+                                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Conversation:</span>
+                                            <div style={{ marginTop: '4px', paddingLeft: '8px', borderLeft: '2px solid var(--border)' }}>
+                                              {test.details.messages.map((m, i) => (
+                                                <div key={i} style={{ marginBottom: '4px', color: 'var(--text-secondary)' }}>{m}</div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                        {test.details.output && (
+                                          <div>
+                                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Output:</span> <span style={{ color: 'var(--text-secondary)' }}>{test.details.output}</span>
+                                          </div>
+                                        )}
+                                        {test.details.expected_output && (
+                                          <div>
+                                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Expected:</span> <span style={{ color: 'var(--text-secondary)' }}>{test.details.expected_output}</span>
+                                          </div>
+                                        )}
+                                        {test.details.retrieval_context && test.details.retrieval_context.length > 0 && (
+                                          <div>
+                                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Retrieval Context:</span>
+                                            <div style={{ marginTop: '4px', paddingLeft: '8px', borderLeft: '2px solid var(--border)' }}>
+                                              {test.details.retrieval_context.map((ctx, cIdx) => (
+                                                <div key={cIdx} style={{ marginBottom: '8px', color: 'var(--text-secondary)', fontSize: '11px' }}>{ctx}</div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
                                     </div>
-                                  </div>
-                                )}
+                                  )}
+
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            ))
+                          )}
                         </div>
                       </div>
                     </div>
                     {/* Re-run Button */}
                     <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
                       <button
-                        className="btn btn-secondary"
+                        className="btn btn-primary"
                         onClick={() => {
                           // Reset state to show Hero again
                           setEvalResult(null);
@@ -1347,28 +1511,7 @@ function App() {
                   </div>
                 )}
 
-                {/* Console Output - Restored */}
-                <div className="console-card" style={{ marginTop: '24px' }}>
-                  <div className="console-header">
-                    <span className="console-title">Execution Logs</span>
-                    <span className="console-meta">{evalLogs.length} lines</span>
-                  </div>
-                  <div className="console-body" ref={evalConsoleRef}>
-                    {evalLogs.length === 0 ? (
-                      <div className="empty">
-                        <span className="empty-icon">{Icons.terminal}</span>
-                        <span className="empty-title">Ready</span>
-                        <span className="empty-desc">Waiting to start...</span>
-                      </div>
-                    ) : (
-                      evalLogs.map((log, i) => (
-                        <div key={i} className="log info">
-                          <span className="log-text" style={{ fontFamily: 'monospace' }}>{log}</span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
+
               </main>
             )}
 

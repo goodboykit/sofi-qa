@@ -39,10 +39,12 @@ def test_fact_retrieval(golden):
         retrieval_context=golden.context 
     )
     
-    # We use a slightly lower threshold to account for model variations
+    # Dynamic threshold configuration
+    threshold = float(os.getenv("EVAL_THRESHOLD", "0.6"))
+    
     assert_test(test_case, [
-        AnswerRelevancyMetric(threshold=0.6),
-        FaithfulnessMetric(threshold=0.6)
+        AnswerRelevancyMetric(threshold=threshold),
+        FaithfulnessMetric(threshold=threshold)
     ])
 
 # --- GROUP 2: Multi-Turn Conversation Quality (Interaction) ---

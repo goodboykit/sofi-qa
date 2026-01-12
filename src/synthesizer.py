@@ -24,13 +24,17 @@ class DatasetGenerator:
         scenario = config.get("scenario", "A customer interacting with an automated assistant.")
         input_format = config.get("input_format", "Professional and specific queries")
         expected_output_format = config.get("expected_output_format", "Detailed responses with citations")
+        
+        # Advanced settings
+        self.num_evolutions = config.get("num_evolutions", 2)
+        self.num_goldens = config.get("num_goldens", 2)
 
         self.evolution_config = EvolutionConfig(
             evolutions={
                 Evolution.REASONING: reasoning_weight,
                 Evolution.MULTICONTEXT: multicontext_weight
             },
-            num_evolutions=2
+            num_evolutions=self.num_evolutions
         )
         self.styling_config = StylingConfig(
             task=task,
@@ -50,7 +54,7 @@ class DatasetGenerator:
         self.synthesizer.synthetic_goldens = []
         self.synthesizer.generate_goldens_from_docs(
             document_paths=paths,
-            max_goldens_per_context=2,
+            max_goldens_per_context=self.num_goldens,
             include_expected_output=True
         )
         self.synthesizer.save_as(file_type='json', directory="data/synthetic_data", file_name="single_turn_goldens")
@@ -62,6 +66,6 @@ class DatasetGenerator:
         
         self.synthesizer.generate_conversational_goldens_from_docs(
             document_paths=paths,
-            max_goldens_per_context=3
+            max_goldens_per_context=self.num_goldens
         )
         self.synthesizer.save_as(file_type='json', directory="data/synthetic_data", file_name="multi_turn_goldens")

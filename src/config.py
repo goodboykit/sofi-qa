@@ -20,8 +20,12 @@ def get_model():
     except:
         pass
 
-    # Using gpt-4o-mini for better quality synthesis while keeping costs low
+    # Try to load model name from config
+    model_name = "gpt-4o-mini"
+    if config.get("model_name"):
+        model_name = config["model_name"]
+
     return GPTModel(
-        model="gpt-4o-mini", 
+        model=model_name, 
         api_key=api_key
     )

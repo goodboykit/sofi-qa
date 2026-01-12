@@ -1,5 +1,5 @@
 {
-  "task": "Expert Customer Supporta",
+  "task": "Expert Customer Supports",
   "scenario": "A customer interacting with an automated assistant.",
   "input_format": "Professional and specific queries",
   "expected_output_format": "Detailed responses with citations",
@@ -7,5 +7,9 @@
   "multicontext_weight": 0.7,
   "api_key": null,
   "eval_metric_name": "Professionalism and Accuracy",
-  "eval_metric_criteria": "Does the bot maintain the Clark Safari persona and provide accurate info?"
+  "eval_metric_criteria": "Does the bot maintain the Clark Safari persona and provide accurate info?",
+  "model_name": "gpt-3.5-turbo",
+  "num_evolutions": 2,
+  "num_goldens": 2,
+  "eval_threshold": 0.5
 }

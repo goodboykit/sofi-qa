@@ -97,6 +97,11 @@ class ConfigUpdate(BaseModel):
     api_key: Optional[str] = None
     eval_metric_name: Optional[str] = "Professionalism & Accuracy"
     eval_metric_criteria: Optional[str] = "Does the bot maintain the Clark Safari persona and provide accurate info?"
+    # Advanced
+    model_name: Optional[str] = "gpt-4o-mini"
+    num_evolutions: Optional[int] = 2
+    num_goldens: Optional[int] = 2
+    eval_threshold: Optional[float] = 0.7
 
 
 # ============ Config Endpoints ============
@@ -117,7 +122,11 @@ async def get_config():
         "multicontext_weight": 0.5,
         "api_key": "",
         "eval_metric_name": "Professionalism & Accuracy",
-        "eval_metric_criteria": "Does the bot maintain the Clark Safari persona and provide accurate info?"
+        "eval_metric_criteria": "Does the bot maintain the Clark Safari persona and provide accurate info?",
+        "model_name": "gpt-4o-mini",
+        "num_evolutions": 2,
+        "num_goldens": 2,
+        "eval_threshold": 0.7
     }
 
 
@@ -510,6 +519,8 @@ async def stream_evaluation():
                         env_vars["EVAL_METRIC_CRITERIA"] = conf["eval_metric_criteria"]
                     if "api_key" in conf and conf["api_key"]:
                         env_vars["OPENAI_API_KEY"] = conf["api_key"]
+                    if "eval_threshold" in conf:
+                        env_vars["EVAL_THRESHOLD"] = str(conf["eval_threshold"])
             except:
                 pass
 
