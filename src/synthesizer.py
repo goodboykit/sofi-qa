@@ -4,7 +4,55 @@ from deepeval.synthesizer.config import EvolutionConfig, Evolution, StylingConfi
 from src.config import get_model
 
 import json
+import tempfile
+import os
 from pathlib import Path
+
+
+def preprocess_documents(paths: List[str]) -> List[str]:
+    """
+    Preprocess document paths - convert PDFs to text files to avoid bbox parsing errors.
+    Returns a list of paths that DeepEval can safely process.
+    """
+    processed_paths = []
+    
+    for path in paths:
+        path_obj = Path(path)
+        
+        if path_obj.suffix.lower() == '.pdf':
+            try:
+                import pdfplumber
+                
+                # Extract text from PDF
+                with pdfplumber.open(path) as pdf:
+                    text = '\n\n'.join([
+                        page.extract_text() or '' 
+                        for page in pdf.pages
+                    ])
+                
+                if text.strip():
+                    # Save as temp text file
+                    temp_dir = Path(tempfile.gettempdir()) / "sofi_qa_docs"
+                    temp_dir.mkdir(exist_ok=True)
+                    
+                    txt_path = temp_dir / f"{path_obj.stem}.txt"
+                    txt_path.write_text(text, encoding='utf-8')
+                    processed_paths.append(str(txt_path))
+                    print(f"Preprocessed PDF: {path_obj.name} -> {txt_path.name}")
+                else:
+                    print(f"Warning: No text extracted from {path_obj.name}")
+            except ImportError:
+                print("Warning: pdfplumber not installed, passing PDF directly to DeepEval")
+                processed_paths.append(path)
+            except Exception as e:
+                print(f"Warning: Could not preprocess {path_obj.name}: {e}")
+                processed_paths.append(path)
+        else:
+            # Non-PDF files pass through as-is
+            processed_paths.append(path)
+    
+    return processed_paths
+
 
 class DatasetGenerator:
     def __init__(self):
@@ -59,19 +107,25 @@ class DatasetGenerator:
         )
 
     def generate_single_turn(self, paths: List[str]):
+        # Preprocess PDFs to avoid bbox parsing errors
+        processed_paths = preprocess_documents(paths)
+        
         # Reset internal list to ensure file is clean
         self.synthesizer.synthetic_goldens = []
         self.synthesizer.generate_goldens_from_docs(
-            document_paths=paths,
+            document_paths=processed_paths,
             max_goldens_per_context=2,
             include_expected_output=True
         )
         self.synthesizer.save_as(file_type='json', directory="data/synthetic_data", file_name="single_turn_goldens")
 
     def generate_multi_turn(self, paths: List[str]):
+        # Preprocess PDFs to avoid bbox parsing errors
+        processed_paths = preprocess_documents(paths)
+        
         self.synthesizer.synthetic_goldens = []
         self.synthesizer.generate_conversational_goldens_from_docs(
-            document_paths=paths,
+            document_paths=processed_paths,
             max_goldens_per_context=3
         )
         self.synthesizer.save_as(file_type='json', directory="data/synthetic_data", file_name="multi_turn_goldens")

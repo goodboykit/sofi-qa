@@ -1,0 +1,8 @@
+{
+  "task": "Expert Customer Support",
+  "scenario": "A customer interacting with an automated assistant.",
+  "input_format": "Professional and specific queries",
+  "expected_output_format": "Detailed responses with citations",
+  "reasoning_weight": 0.5,
+  "multicontext_weight": 0.5
+}

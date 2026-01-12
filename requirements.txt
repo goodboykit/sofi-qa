@@ -7,6 +7,9 @@ langchain-core
 langchain-community
 langchain-text-splitters
 pypdf
+pdfplumber
+chardet
+tiktoken
 Pillow
 boto3
 python-dotenv
