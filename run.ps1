@@ -4,6 +4,10 @@ $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $ScriptDir
 
+# Set console encoding to UTF-8 for better character support
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
+Write-Host ""
 Write-Host "============================================================" -ForegroundColor Magenta
 Write-Host "        SoFi-QA - Synthetic Q&A Generator                   " -ForegroundColor Magenta
 Write-Host "============================================================" -ForegroundColor Magenta
@@ -130,8 +134,15 @@ if (Test-Path $VenvActivate) {
 }
 
 # 3. Install Requirements
-Write-Host "[*] Checking dependencies..." -ForegroundColor Cyan
-pip install -r (Join-Path $ScriptDir "requirements.txt") | Out-Null
+Write-Host "[*] Installing Python dependencies (this may take a moment)..." -ForegroundColor Cyan
+try {
+    pip install -r (Join-Path $ScriptDir "requirements.txt") --quiet
+    Write-Host "    [OK] Python dependencies installed" -ForegroundColor Green
+} catch {
+    Write-Host "[X] Failed to install Python dependencies!" -ForegroundColor Red
+    Write-Host "    Error: $_" -ForegroundColor Red
+    exit 1
+}
 
 # 4. Check Frontend Dependencies
 $FrontendDir = Join-Path $ScriptDir "frontend"
