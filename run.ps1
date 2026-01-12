@@ -9,12 +9,115 @@ Write-Host "        SoFi-QA - Synthetic Q&A Generator                   " -Foreg
 Write-Host "============================================================" -ForegroundColor Magenta
 Write-Host ""
 
+# ============================================================
+# PREREQUISITE CHECKS
+# ============================================================
+
+Write-Host "[*] Checking prerequisites..." -ForegroundColor Cyan
+
+# Check for Python
+$PythonCmd = $null
+try {
+    $PythonCmd = Get-Command python -ErrorAction Stop
+} catch {
+    try {
+        $PythonCmd = Get-Command python3 -ErrorAction Stop
+    } catch {
+        # Python not found
+    }
+}
+
+if (-not $PythonCmd) {
+    Write-Host ""
+    Write-Host "[X] Python is not installed!" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Please install Python 3.10 or newer:" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  Download from: https://www.python.org/downloads/" -ForegroundColor White
+    Write-Host ""
+    Write-Host "  IMPORTANT: During installation, check the box that says:" -ForegroundColor Yellow
+    Write-Host '  [x] "Add Python to PATH"' -ForegroundColor Green
+    Write-Host ""
+    exit 1
+}
+
+# Check Python version (need 3.10+)
+$PythonVersion = & $PythonCmd.Source -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
+$PythonMajor = & $PythonCmd.Source -c "import sys; print(sys.version_info.major)"
+$PythonMinor = & $PythonCmd.Source -c "import sys; print(sys.version_info.minor)"
+
+if ([int]$PythonMajor -lt 3 -or ([int]$PythonMajor -eq 3 -and [int]$PythonMinor -lt 10)) {
+    Write-Host ""
+    Write-Host "[X] Python version $PythonVersion is too old!" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Please install Python 3.10 or newer:" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  Download from: https://www.python.org/downloads/" -ForegroundColor White
+    Write-Host ""
+    exit 1
+}
+
+Write-Host "    [OK] Python $PythonVersion found" -ForegroundColor Green
+
+# Check for Node.js
+$NodeCmd = $null
+try {
+    $NodeCmd = Get-Command node -ErrorAction Stop
+} catch {
+    # Node not found
+}
+
+if (-not $NodeCmd) {
+    Write-Host ""
+    Write-Host "[X] Node.js is not installed!" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Please install Node.js (LTS version recommended):" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  Download from: https://nodejs.org/" -ForegroundColor White
+    Write-Host ""
+    Write-Host "  Choose the LTS (Long Term Support) version." -ForegroundColor Yellow
+    Write-Host ""
+    exit 1
+}
+
+$NodeVersion = & node --version
+Write-Host "    [OK] Node.js $NodeVersion found" -ForegroundColor Green
+
+# Check for npm
+$NpmCmd = $null
+try {
+    $NpmCmd = Get-Command npm -ErrorAction Stop
+} catch {
+    # npm not found
+}
+
+if (-not $NpmCmd) {
+    Write-Host ""
+    Write-Host "[X] npm is not installed!" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "npm usually comes with Node.js. Please reinstall Node.js:" -ForegroundColor Yellow
+    Write-Host "  https://nodejs.org/" -ForegroundColor White
+    Write-Host ""
+    exit 1
+}
+
+$NpmVersion = & npm --version
+Write-Host "    [OK] npm $NpmVersion found" -ForegroundColor Green
+
+Write-Host ""
+Write-Host "[OK] All prerequisites met!" -ForegroundColor Green
+Write-Host ""
+
+# ============================================================
+# SETUP AND RUN
+# ============================================================
+
 $VenvDir = Join-Path $ScriptDir ".venv"
 
 # 1. Check/Create Virtual Environment
 if (-not (Test-Path $VenvDir)) {
     Write-Host "[!] Virtual environment not found. Creating one..." -ForegroundColor Yellow
-    python -m venv $VenvDir
+    & $PythonCmd.Source -m venv $VenvDir
 }
 
 # 2. Activate Virtual Environment

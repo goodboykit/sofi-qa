@@ -10,6 +10,7 @@ CYAN='\033[0;36m'
 PURPLE='\033[0;35m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo -e "${PURPLE}"
@@ -20,20 +21,104 @@ echo "║                                                           ║"
 echo "╚═══════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
+# ============================================================
+# PREREQUISITE CHECKS
+# ============================================================
+
+echo -e "${CYAN}🔍 Checking prerequisites...${NC}"
+
+# Check for Python
+PYTHON_CMD=""
+if command -v python3 &>/dev/null; then
+    PYTHON_CMD="python3"
+elif command -v python &>/dev/null; then
+    PYTHON_CMD="python"
+fi
+
+if [ -z "$PYTHON_CMD" ]; then
+    echo -e "${RED}❌ Python is not installed!${NC}"
+    echo ""
+    echo -e "${YELLOW}Please install Python 3.10 or newer:${NC}"
+    echo ""
+    echo "  🍎 Mac:     brew install python@3.12"
+    echo "             or download from https://www.python.org/downloads/"
+    echo ""
+    echo "  🐧 Linux:   sudo apt install python3 python3-pip python3-venv"
+    echo "             or: sudo dnf install python3 python3-pip"
+    echo ""
+    echo "  🪟 Windows: https://www.python.org/downloads/"
+    echo ""
+    exit 1
+fi
+
+# Check Python version (need 3.10+)
+PYTHON_VERSION=$($PYTHON_CMD -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+PYTHON_MAJOR=$($PYTHON_CMD -c 'import sys; print(sys.version_info.major)')
+PYTHON_MINOR=$($PYTHON_CMD -c 'import sys; print(sys.version_info.minor)')
+
+if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 10 ]); then
+    echo -e "${RED}❌ Python version $PYTHON_VERSION is too old!${NC}"
+    echo ""
+    echo -e "${YELLOW}Please install Python 3.10 or newer:${NC}"
+    echo ""
+    echo "  🍎 Mac:     brew install python@3.12"
+    echo "             or download from https://www.python.org/downloads/"
+    echo ""
+    echo "  🐧 Linux:   sudo apt install python3.12 python3.12-venv"
+    echo ""
+    echo "  🪟 Windows: https://www.python.org/downloads/"
+    echo ""
+    exit 1
+fi
+
+echo -e "   ${GREEN}✓${NC} Python $PYTHON_VERSION found"
+
+# Check for Node.js
+if ! command -v node &>/dev/null; then
+    echo -e "${RED}❌ Node.js is not installed!${NC}"
+    echo ""
+    echo -e "${YELLOW}Please install Node.js (LTS version recommended):${NC}"
+    echo ""
+    echo "  🍎 Mac:     brew install node"
+    echo "             or download from https://nodejs.org/"
+    echo ""
+    echo "  🐧 Linux:   curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -"
+    echo "             sudo apt install -y nodejs"
+    echo ""
+    echo "  🪟 Windows: https://nodejs.org/"
+    echo ""
+    exit 1
+fi
+
+NODE_VERSION=$(node --version)
+echo -e "   ${GREEN}✓${NC} Node.js $NODE_VERSION found"
+
+# Check for npm
+if ! command -v npm &>/dev/null; then
+    echo -e "${RED}❌ npm is not installed!${NC}"
+    echo ""
+    echo -e "${YELLOW}npm usually comes with Node.js. Please reinstall Node.js:${NC}"
+    echo "  https://nodejs.org/"
+    echo ""
+    exit 1
+fi
+
+NPM_VERSION=$(npm --version)
+echo -e "   ${GREEN}✓${NC} npm $NPM_VERSION found"
+
+echo -e "${GREEN}✅ All prerequisites met!${NC}"
+echo ""
+
+# ============================================================
+# SETUP AND RUN
+# ============================================================
+
 # Get the script directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Check if virtual environment exists
 if [ ! -d "$SCRIPT_DIR/.venv" ]; then
     echo -e "${YELLOW}⚠️  Virtual environment not found. Creating one...${NC}"
-    
-    # Check for python command
-    if command -v python3 &>/dev/null; then
-        PYTHON_CMD="python3"
-    else
-        PYTHON_CMD="python"
-    fi
-    
     $PYTHON_CMD -m venv "$SCRIPT_DIR/.venv"
 fi
 
