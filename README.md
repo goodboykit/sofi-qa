@@ -143,6 +143,7 @@ pytest tests/ -v
 -   **Website looks weird?** Refresh the page (Cmd+Shift+R or Ctrl+Shift+R).
 -   **Tests failing?** Make sure you have data in `data/synthetic_data/` first.
 -   **Evaluation won't start?** Generate data with Synthesis first before running tests.
+-   **PDF parsing issues?** The app uses PyMuPDF for robust PDF parsing on all platforms. Make sure `pymupdf` is installed: `pip install pymupdf`
 
 ---
 

@@ -1,46 +1,22 @@
-from typing import List, Optional
+from typing import List
 from deepeval.synthesizer import Synthesizer
 from deepeval.synthesizer.config import EvolutionConfig, Evolution, StylingConfig, FiltrationConfig
 from src.config import get_model
 
 import json
-import tempfile
 from pathlib import Path
 
 
-def convert_pdf_to_text(path: str) -> Optional[str]:
-    """
-    Fallback: Convert a PDF to text using pdfplumber.
-    Returns the path to the text file, or None if conversion fails.
-    """
-    path_obj = Path(path)
-    
-    try:
-        import pdfplumber
-        
-        with pdfplumber.open(path) as pdf:
-            text = '\n\n'.join([
-                page.extract_text() or '' 
-                for page in pdf.pages
-            ])
-        
-        if text.strip():
-            temp_dir = Path(tempfile.gettempdir()) / "sofi_qa_docs"
-            temp_dir.mkdir(exist_ok=True)
-            
-            txt_path = temp_dir / f"{path_obj.stem}.txt"
-            txt_path.write_text(text, encoding='utf-8')
-            print(f"📄 Converted PDF to text: {path_obj.name} -> {txt_path.name}")
-            return str(txt_path)
-        else:
-            print(f"⚠️ Warning: No text extracted from {path_obj.name}")
-            return None
-    except Exception as e:
-        print(f"❌ Error converting PDF to text: {e}")
-        return None
-
-
 class DatasetGenerator:
+    """
+    Generates synthetic Q&A datasets from documents using DeepEval's built-in PDF parsing.
+    
+    DeepEval uses langchain-community for document loading, which supports PDF files directly.
+    With pymupdf installed, the PDF parsing is robust across all platforms (Windows, Mac, Linux).
+    
+    No text conversion is performed - PDFs are read directly by DeepEval.
+    """
+    
     def __init__(self):
         self.model = get_model()
         
@@ -98,80 +74,54 @@ class DatasetGenerator:
             filtration_config=filtration
         )
 
-    def _try_generate_with_fallback(self, paths: List[str], generate_func, **kwargs):
+    def _generate_from_docs(self, paths: List[str], generate_func, **kwargs):
         """
-        Try to generate goldens directly from documents first.
-        If PDF parsing fails (bbox errors, etc.), fall back to text conversion.
+        Generate goldens directly from documents using DeepEval's built-in PDF parser.
+        
+        No fallback to text conversion - relies on pymupdf for robust PDF parsing.
+        If parsing fails, the error is raised directly.
         """
-        # Reset internal list to ensure file is clean
+        # Reset internal list to ensure clean state
         self.synthesizer.synthetic_goldens = []
         
-        # Common high-quality chunking parameters
+        # High-quality chunking parameters for better context
         chunk_args = {
             "chunk_size": 1024,  # Larger chunks for better context quality
             "chunk_overlap": 100  # Overlap to prevent splitting sentences/context
         }
         kwargs.update(chunk_args)
         
-        try:
-            # First attempt: Try reading documents directly (including PDFs)
-            print(f"📚 Reading documents directly: {[Path(p).name for p in paths]}")
-            generate_func(document_paths=paths, **kwargs)
-            print("✅ Successfully generated goldens from documents directly!")
-            
-        except Exception as e:
-            # Check if there are any PDFs in the input paths
-            has_pdf_files = any(Path(p).suffix.lower() == '.pdf' for p in paths)
-            
-            if has_pdf_files:
-                # If PDFs are involved and generation failed, try text conversion fallback
-                print(f"⚠️ Error during document processing: {e}")
-                print("🔄 PDFs detected in input. Attempting text conversion fallback...")
-                
-                # Convert PDFs to text and retry
-                fallback_paths = []
-                for path in paths:
-                    path_obj = Path(path)
-                    if path_obj.suffix.lower() == '.pdf':
-                        txt_path = convert_pdf_to_text(path)
-                        if txt_path:
-                            fallback_paths.append(txt_path)
-                        else:
-                            print(f"⚠️ Skipping {path_obj.name} - could not convert to text")
-                    else:
-                        # Non-PDF files pass through as-is
-                        fallback_paths.append(path)
-                
-                if fallback_paths:
-                    try:
-                        self.synthesizer.synthetic_goldens = []
-                        generate_func(document_paths=fallback_paths, **kwargs)
-                        print("✅ Successfully generated goldens using text conversion fallback!")
-                    except Exception as fallback_error:
-                        print(f"❌ Fallback also failed: {fallback_error}")
-                        raise fallback_error
-                else:
-                    raise Exception("No documents could be processed - all PDF conversions failed")
-            else:
-                # No PDFs involved, re-raise the original error
-                raise
+        # Read documents directly (DeepEval uses langchain + pymupdf for PDFs)
+        print(f"📚 Reading documents: {[Path(p).name for p in paths]}")
+        generate_func(document_paths=paths, **kwargs)
+        print("✅ Successfully generated goldens from documents!")
 
     def generate_single_turn(self, paths: List[str]):
         """Generate single-turn Q&A pairs from documents."""
-        self._try_generate_with_fallback(
+        self._generate_from_docs(
             paths,
             self.synthesizer.generate_goldens_from_docs,
             max_goldens_per_context=5,
             include_expected_output=True,
-            num_evolutions=3 # Explicitly pass evolutions count
+            num_evolutions=3
         )
-        self.synthesizer.save_as(file_type='json', directory="data/synthetic_data", file_name="single_turn_goldens")
+        self.synthesizer.save_as(
+            file_type='json', 
+            directory="data/synthetic_data", 
+            file_name="single_turn_goldens"
+        )
+        print("💾 Saved to data/synthetic_data/single_turn_goldens.json")
 
     def generate_multi_turn(self, paths: List[str]):
         """Generate multi-turn conversational goldens from documents."""
-        self._try_generate_with_fallback(
+        self._generate_from_docs(
             paths,
             self.synthesizer.generate_conversational_goldens_from_docs,
             max_goldens_per_context=4
         )
-        self.synthesizer.save_as(file_type='json', directory="data/synthetic_data", file_name="multi_turn_goldens")
+        self.synthesizer.save_as(
+            file_type='json', 
+            directory="data/synthetic_data", 
+            file_name="multi_turn_goldens"
+        )
+        print("💾 Saved to data/synthetic_data/multi_turn_goldens.json")
