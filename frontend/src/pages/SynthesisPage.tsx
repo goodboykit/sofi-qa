@@ -239,6 +239,90 @@ export function SynthesisPage({ status, documents, config, onSynthesisComplete, 
                 </div>
             </div>
 
+            {/* Document Selection */}
+            <div className="card" style={{ marginBottom: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <h3 className="text-lg font-medium" style={{ margin: 0 }}>Source Documents</h3>
+                    <div style={{ gap: '8px', display: 'flex' }}>
+                        <button
+                            className="btn-text"
+                            onClick={() => setSelectedDocs(documents.map(d => d.id))}
+                            style={{ fontSize: '12px' }}
+                        >
+                            Select All
+                        </button>
+                        <button
+                            className="btn-text"
+                            onClick={() => setSelectedDocs([])}
+                            style={{ fontSize: '12px' }}
+                        >
+                            Clear
+                        </button>
+                    </div>
+                </div>
+
+                {documents.length === 0 ? (
+                    <div className="empty-state" style={{ padding: '20px', textAlign: 'center', border: '1px dashed var(--border)', borderRadius: 'var(--radius)' }}>
+                        <p style={{ color: 'var(--text-muted)' }}>No documents. Upload some in the Documents tab.</p>
+                    </div>
+                ) : (
+                    <div className="document-list" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '8px' }}>
+                        {documents.map(doc => {
+                            const isSelected = selectedDocs.includes(doc.id);
+                            return (
+                                <div
+                                    key={doc.id}
+                                    onClick={() => {
+                                        if (running) return;
+                                        setSelectedDocs(prev =>
+                                            prev.includes(doc.id)
+                                                ? prev.filter(id => id !== doc.id)
+                                                : [...prev, doc.id]
+                                        );
+                                    }}
+                                    className={`doc-card-mini ${isSelected ? 'selected' : ''}`}
+                                    style={{
+                                        padding: '10px',
+                                        background: isSelected ? 'rgba(34, 197, 94, 0.1)' : 'var(--bg-card-hover)',
+                                        border: `1px solid ${isSelected ? 'var(--success)' : 'var(--border)'}`,
+                                        borderRadius: 'var(--radius)',
+                                        cursor: running ? 'not-allowed' : 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        transition: 'all 0.2s ease',
+                                        opacity: running ? 0.6 : 1
+                                    }}
+                                >
+                                    <div style={{
+                                        width: '16px',
+                                        height: '16px',
+                                        borderRadius: '4px',
+                                        border: `1px solid ${isSelected ? 'var(--success)' : 'var(--text-muted)'}`,
+                                        background: isSelected ? 'var(--success)' : 'transparent',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: 'white',
+                                        fontSize: '10px'
+                                    }}>
+                                        {isSelected && Icons.check}
+                                    </div>
+                                    <div style={{ overflow: 'hidden' }}>
+                                        <p style={{ margin: 0, fontSize: '13px', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            {doc.name}
+                                        </p>
+                                        <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-muted)' }}>
+                                            {(doc.size / 1024).toFixed(1)} KB
+                                        </p>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+
             {/* Console */}
             <div className="console-card">
                 <div className="console-header">
