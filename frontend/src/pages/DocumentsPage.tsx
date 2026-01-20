@@ -12,6 +12,7 @@ interface DocumentsPageProps {
 export function DocumentsPage({ documents, uploading, onUpload, confirmDelete }: DocumentsPageProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [dragActive, setDragActive] = React.useState(false);
+    const [previewDoc, setPreviewDoc] = React.useState<Document | null>(null);
 
     const handleDrag = (e: React.DragEvent) => {
         e.preventDefault();
@@ -37,60 +38,91 @@ export function DocumentsPage({ documents, uploading, onUpload, confirmDelete }:
         const k = 1024;
         const sizes = ['Bytes', 'KB', 'MB', 'GB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    };
+
+    const openPreview = (doc: Document) => {
+        setPreviewDoc(doc);
+    };
+
+    const closePreview = () => {
+        setPreviewDoc(null);
+    };
+
+    const getPreviewUrl = (doc: Document) => {
+        return `http://localhost:8000/files/${doc.name}`;
+    };
+
+    const canPreviewInline = (type: string) => {
+        return ['pdf', 'txt', 'csv'].includes(type.toLowerCase());
     };
 
     return (
-        <main className="main" style={{ maxWidth: '1000px', margin: '0 auto' }}>
-            <div className="card-container">
-                <div className="documents-card">
-                    <div className="documents-header">
-                        <span className="documents-title">Source Documents</span>
-                        <span className="documents-count">{documents.length} files</span>
-                    </div>
+        <main className="main">
+            {/* Upload Dropzone */}
+            <div
+                className={`upload-dropzone ${dragActive ? 'drag-active' : ''} ${uploading ? 'uploading' : ''}`}
+                onClick={() => !uploading && fileInputRef.current?.click()}
+                onDragEnter={handleDrag}
+                onDragLeave={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={handleDrop}
+            >
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept=".pdf,.docx,.xlsx,.csv,.txt"
+                    onChange={(e) => e.target.files && onUpload(e.target.files)}
+                    style={{ display: 'none' }}
+                />
+                <div className="dropzone-icon">
+                    {uploading ? <div className="upload-spinner"></div> : Icons.upload}
+                </div>
+                <div className="dropzone-text">
+                    <span className="dropzone-title">
+                        {uploading ? 'Uploading...' : 'Click to upload or drag & drop'}
+                    </span>
+                    <span className="dropzone-hint">
+                        PDF, DOCX, XLSX, CSV, TXT supported
+                    </span>
+                </div>
+            </div>
 
-                    <div
-                        className={`upload-area ${dragActive ? 'active' : ''}`}
-                        onClick={() => fileInputRef.current?.click()}
-                        onDragEnter={handleDrag}
-                        onDragLeave={handleDrag}
-                        onDragOver={handleDrag}
-                        onDrop={handleDrop}
-                    >
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            multiple
-                            onChange={(e) => e.target.files && onUpload(e.target.files)}
-                            className="file-input"
-                        />
-                        <div className="upload-icon">{Icons.upload}</div>
-                        <div className="upload-text">
-                            {uploading ? 'Uploading...' : 'Click to upload or drag files here'}
+            {/* Documents List */}
+            <div className="console-card" style={{ flex: 1 }}>
+                <div className="console-header">
+                    <span className="console-title">Source Documents</span>
+                    <span className="console-meta">{documents.length} files</span>
+                </div>
+                <div className="console-body">
+                    {documents.length === 0 ? (
+                        <div className="empty">
+                            <span className="empty-icon">{Icons.file}</span>
+                            <span className="empty-title">No documents yet</span>
+                            <span className="empty-desc">Upload files to get started</span>
                         </div>
-                        <div className="upload-hint">Supported: PDF, DOCX, TXT</div>
-                    </div>
-
-                    {documents.length > 0 && (
-                        <div className="documents-list">
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {documents.map((doc) => (
-                                <div key={doc.id} className="document-item">
-                                    <div className="document-icon">
-                                        {Icons.file}
-                                    </div>
+                                <div
+                                    key={doc.id}
+                                    className="document-item"
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={() => openPreview(doc)}
+                                    title="Click to preview"
+                                >
+                                    <div className="document-icon">{Icons.file}</div>
                                     <div className="document-info">
                                         <span className="document-name">{doc.name}</span>
                                         <span className="document-meta">
-                                            {doc.type.toUpperCase()} • {formatFileSize(doc.size)}
+                                            {doc.type} • {formatFileSize(doc.size)}
                                         </span>
                                     </div>
                                     <button
                                         className="document-delete"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            confirmDelete(doc.id);
-                                        }}
-                                        title="Delete document"
+                                        onClick={(e) => { e.stopPropagation(); confirmDelete(doc.id); }}
+                                        title="Delete"
                                     >
                                         {Icons.trash}
                                     </button>
@@ -100,6 +132,58 @@ export function DocumentsPage({ documents, uploading, onUpload, confirmDelete }:
                     )}
                 </div>
             </div>
+
+            {/* Preview Modal */}
+            {previewDoc && (
+                <div className="preview-modal-overlay" onClick={closePreview}>
+                    <div className="preview-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="preview-header">
+                            <div className="preview-title">
+                                {Icons.file}
+                                <span>{previewDoc.name}</span>
+                            </div>
+                            <div className="preview-actions">
+                                <a
+                                    href={getPreviewUrl(previewDoc)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="preview-open-btn"
+                                    title="Open in new tab"
+                                >
+                                    {Icons.external}
+                                </a>
+                                <button className="preview-close-btn" onClick={closePreview} title="Close">
+                                    {Icons.close}
+                                </button>
+                            </div>
+                        </div>
+                        <div className="preview-body">
+                            {canPreviewInline(previewDoc.type) ? (
+                                <iframe
+                                    src={getPreviewUrl(previewDoc)}
+                                    className="preview-iframe"
+                                    title={`Preview ${previewDoc.name}`}
+                                />
+                            ) : (
+                                <div className="preview-unsupported">
+                                    <div className="preview-unsupported-icon">{Icons.file}</div>
+                                    <p>Preview not available for this file type</p>
+                                    <a
+                                        href={getPreviewUrl(previewDoc)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn btn-primary"
+                                    >
+                                        Download File
+                                    </a>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </main>
     );
 }
+
+
