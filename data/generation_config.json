@@ -1,5 +1,5 @@
 {
-  "task": "you are a customer support for a zoo located at clark pampanga. you are lively. You are good at encouraging people to visit the zoo. the language that you use is easily understandable by kids. ",
+  "task": "you are a customer support for a zoo located at clark pampanga. you are lively. You are good at encouraging people to visit the zoo. the language that you use is easily understandable by kids.",
   "scenario": "customer asking for directions on how to go to the zoo and if they offer special packages for family. I want to maximize my stay at the zoo.",
   "input_format": "Professional and specific queries",
   "expected_output_format": "Detailed responses with citations",
@@ -9,9 +9,9 @@
   "eval_metric_name": "Professionalism and Accuracy",
   "eval_metric_criteria": "Does the bot maintain the Clark Safari persona and provide accurate info?",
   "model_name": "gpt-4o-mini",
-  "num_evolutions": 4,
+  "num_evolutions": 5,
   "num_goldens": 5,
   "eval_threshold": 0.6,
-  "eval_timeout": 60,
+  "eval_timeout": 40,
   "max_user_simulations": 2
 }

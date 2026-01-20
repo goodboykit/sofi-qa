@@ -12,6 +12,7 @@ import type { LogEntry, Config, Document } from './types';
 import { LoadingScreen } from './components/common/LoadingScreen';
 import { Sidebar } from './components/common/Sidebar';
 import { Header } from './components/common/Header';
+import { Modal } from './components/common/Modal';
 
 // Pages
 import { SynthesisPage } from './pages/SynthesisPage';
@@ -57,6 +58,7 @@ function App() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [uploading, setUploading] = useState(false);
   const [dataTab, setDataTab] = useState<'single' | 'multi'>('single');
+  const [successModalOpen, setSuccessModalOpen] = useState(false);
 
   // Derived
   const syntheticData = dataTab === 'single' ? singleTurnGoldens : multiTurnGoldens;
@@ -139,9 +141,14 @@ function App() {
     }
   }, [fetchSyntheticData]);
 
-  const saveConfig = () => {
-    // Session storage handles persistence automatically via the hook
-    // Optional: temporary toast notification
+  const saveConfig = async () => {
+    try {
+      await axios.post('http://localhost:8000/api/config', config);
+      setSuccessModalOpen(true);
+    } catch (err) {
+      console.error('Failed to save config:', err);
+      alert('Failed to save configuration.');
+    }
   };
 
   // Document Handlers
@@ -149,8 +156,8 @@ function App() {
     if (!files[0]) return;
     const file = files[0];
 
-    if (!file.name.match(/\.(pdf|docx)$/i)) {
-      alert('Only PDF and DOCX files are supported');
+    if (!file.name.match(/\.(pdf|docx|xlsx|csv|txt)$/i)) {
+      alert('Supported formats: PDF, DOCX, XLSX, CSV, TXT');
       return;
     }
 
@@ -255,6 +262,23 @@ function App() {
           </div>
         </div>
       )}
+      <Modal
+        isOpen={successModalOpen}
+        onClose={() => setSuccessModalOpen(false)}
+        title="Success"
+        footer={
+          <button className="btn-secondary" onClick={() => setSuccessModalOpen(false)}>
+            Close
+          </button>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <p>Configuration has been saved successfully.</p>
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            Your settings have been written to disk and will persist across restarts.
+          </p>
+        </div>
+      </Modal>
     </>
   );
 }

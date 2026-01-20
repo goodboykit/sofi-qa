@@ -359,32 +359,42 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .modal-header {
-  padding: 16px 20px;
+  padding: 16px 24px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  background: var(--bg-card-hover);
+  /* Added subtle background */
 }
 
 .modal-title {
   font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .modal-close {
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 4px;
+  padding: 6px;
   border-radius: var(--radius);
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .modal-close:hover {
-  background: var(--bg-input);
-  color: var(--text-primary);
+  background: rgba(255, 92, 92, 0.1);
+  /* Subtle red tint */
+  color: var(--error);
+  border-color: rgba(255, 92, 92, 0.2);
 }
 
 .modal-close svg {
@@ -393,15 +403,16 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .modal-body {
-  padding: 20px;
+  padding: 24px;
   color: var(--text-secondary);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .modal-actions {
-  padding: 16px 20px;
-  background: var(--bg-input);
+  padding: 16px 24px;
+  background: var(--bg-card);
+  /* Keep separate or match header logic */
   border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -2258,6 +2269,7 @@ input[type="range"] {
 .data-box.output .data-box-label {
   color: var(--accent);
 }
+
 /* ========================================
    Form Elements - Standardized
    ======================================== */
@@ -2337,7 +2349,8 @@ input[type="number"].form-input {
   border-radius: var(--radius);
   color: var(--text-primary);
   font-family: var(--font);
-  font-size: 14px !important; /* Force standard size */
+  font-size: 14px !important;
+  /* Force standard size */
   line-height: 1.5;
   padding: 10px 14px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;

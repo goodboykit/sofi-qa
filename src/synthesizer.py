@@ -59,58 +59,90 @@ class DatasetGenerator:
                     text_parts.append(page_text)
         return "\n\n".join(text_parts)
     
+    def _extract_from_excel(self, path: str) -> str:
+        import pandas as pd
+        try:
+            df = pd.read_excel(path)
+            # Convert to string, handling NaNs
+            return df.to_string(index=False, na_rep="")
+        except Exception as e:
+            return f"Error reading Excel {path}: {str(e)}"
+
+    def _extract_from_csv(self, path: str) -> str:
+        import pandas as pd
+        try:
+            df = pd.read_csv(path)
+            return df.to_string(index=False, na_rep="")
+        except Exception as e:
+            return f"Error reading CSV {path}: {str(e)}"
+
+    def _extract_from_txt(self, path: str) -> str:
+        try:
+            return Path(path).read_text(encoding='utf-8', errors='replace')
+        except Exception as e:
+            return f"Error reading TXT {path}: {str(e)}"
+
     def _get_document_contexts(self, paths: List[str]) -> List[str]:
-        """Extract text contexts from documents, handling PDFs specially on Windows."""
+        """Extract text contexts from documents, handling all supported formats."""
         contexts = []
         for path in paths:
             path_obj = Path(path)
-            if path_obj.suffix.lower() == '.pdf':
-                try:
-                    text = self._extract_text_from_pdf(path)
-                    if text.strip():
-                        # Split into chunks of ~2000 chars for better context handling
-                        chunk_size = 2000
-                        for i in range(0, len(text), chunk_size):
-                            chunk = text[i:i+chunk_size].strip()
-                            if chunk:
-                                contexts.append(chunk)
-                        print(f"✅ Extracted {len(contexts)} chunks from {path_obj.name}")
-                    else:
-                        print(f"⚠️ No text found in {path_obj.name}")
-                except Exception as e:
-                    print(f"❌ Error reading {path_obj.name}: {e}")
-            elif path_obj.suffix.lower() == '.docx':
-                # Handle DOCX files
-                try:
+            text = ""
+            
+            try:
+                suffix = path_obj.suffix.lower()
+                if suffix == '.pdf':
+                    text = self._extract_text_from_pdf(str(path))
+                elif suffix == '.docx':
                     from docx import Document
                     doc = Document(path)
                     text = "\n".join([para.text for para in doc.paragraphs if para.text.strip()])
-                    if text.strip():
-                        chunk_size = 2000
-                        for i in range(0, len(text), chunk_size):
-                            chunk = text[i:i+chunk_size].strip()
-                            if chunk:
-                                contexts.append(chunk)
-                        print(f"✅ Extracted {len(contexts)} chunks from {path_obj.name}")
-                except Exception as e:
-                    print(f"❌ Error reading {path_obj.name}: {e}")
+                elif suffix == '.xlsx':
+                    text = self._extract_from_excel(str(path))
+                elif suffix == '.csv':
+                    text = self._extract_from_csv(str(path))
+                elif suffix == '.txt':
+                    text = self._extract_from_txt(str(path))
+                
+                if text.strip():
+                    # Split into chunks of ~2000 chars for better context handling
+                    # This ensures we don't exceed token limits while keeping semantic chunks
+                    chunk_size = 2000
+                    current_chunks = 0
+                    for i in range(0, len(text), chunk_size):
+                        chunk = text[i:i+chunk_size].strip()
+                        if chunk:
+                            contexts.append(chunk)
+                            current_chunks += 1
+                    print(f"✅ Extracted {current_chunks} chunks from {path_obj.name}")
+                else:
+                    print(f"⚠️ No text found in {path_obj.name}")
+                    
+            except Exception as e:
+                print(f"❌ Error reading {path_obj.name}: {e}")
+                
         return contexts
 
     def generate_single_turn(self, paths: List[str]):
         # Reset internal list to ensure file is clean
         self.synthesizer.synthetic_goldens = []
         
-        # Use document paths directly - DeepEval handles PDF parsing internally
-        # The from_docs method is more reliable for proper context formatting
+        # 1. Manually extract contexts to ensure high quality for ALL formats
         print(f"📊 Processing {len(paths)} document(s) for synthesis")
-        self.synthesizer.generate_goldens_from_docs(
-            document_paths=paths,
+        contexts = self._get_document_contexts(paths)
+        
+        if not contexts:
+            raise ValueError("No readable text found in documents. Please check file contents.")
+
+        # 2. Pass extracted contexts to DeepEval
+        self.synthesizer.generate_goldens(
+            contexts=contexts,
             max_goldens_per_context=self.num_goldens,
             include_expected_output=True
         )
         
         if not self.synthesizer.synthetic_goldens:
-            raise ValueError("No goldens were generated. Please check your documents contain readable text.")
+            raise ValueError("No goldens were generated. Please check your documents.")
         
         self.synthesizer.save_as(file_type='json', directory="data/synthetic_data", file_name="single_turn_goldens")
 
@@ -119,14 +151,29 @@ class DatasetGenerator:
         self.synthesizer.synthetic_goldens = []
         self.synthesizer.synthetic_conversational_goldens = []
         
-        # Use document paths directly - DeepEval handles PDF parsing internally
+        # 1. Manually extract contexts
         print(f"📊 Processing {len(paths)} document(s) for synthesis")
-        self.synthesizer.generate_conversational_goldens_from_docs(
-            document_paths=paths,
-            max_goldens_per_context=self.num_goldens
-        )
+        contexts = self._get_document_contexts(paths)
+
+        if not contexts:
+            raise ValueError("No readable text found in documents. Please check file contents.")
+            
+        # 2. Generate conversational goldens from contexts
+        # We use the explicit context method to ensure our custom extraction (which supports xlsx/csv/txt) is used
+        try:
+            self.synthesizer.generate_conversational_goldens(
+                contexts=contexts,
+                max_goldens_per_context=self.num_goldens
+            )
+        except AttributeError:
+             # Fallback if specific method name differs slightly in version
+             self.synthesizer.generate_goldens(
+                contexts=contexts,
+                max_goldens_per_context=self.num_goldens,
+                _type="conversational"
+             )
         
         if not self.synthesizer.synthetic_conversational_goldens:
-            raise ValueError("No conversations were generated. Please check your documents contain readable text.")
+            raise ValueError("No conversations were generated. Please check your documents.")
         
         self.synthesizer.save_as(file_type='json', directory="data/synthetic_data", file_name="multi_turn_goldens")

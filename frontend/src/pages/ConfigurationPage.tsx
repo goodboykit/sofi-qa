@@ -171,7 +171,12 @@ export function ConfigurationPage({ config, setConfig, saveConfig }: Configurati
 
                                     <div className="form-group" style={{ marginBottom: '16px' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                            <label style={{ fontSize: '13px' }}>Reasoning Focus</label>
+                                            <label className="label-with-tooltip">
+                                                Reasoning Focus
+                                                <span className="info-icon">i
+                                                    <span className="tooltip-text">Controls how much the AI prioritizes logical deduction steps in the synthetic data.</span>
+                                                </span>
+                                            </label>
                                             <span className="range-value">{config.reasoning_weight}</span>
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -187,7 +192,12 @@ export function ConfigurationPage({ config, setConfig, saveConfig }: Configurati
 
                                     <div className="form-group" style={{ marginBottom: '0' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                            <label style={{ fontSize: '13px' }}>Multi-Context Focus</label>
+                                            <label className="label-with-tooltip">
+                                                Multi-Context Focus
+                                                <span className="info-icon">i
+                                                    <span className="tooltip-text">Determines the likelihood of generating questions that span multiple sections or documents.</span>
+                                                </span>
+                                            </label>
                                             <span className="range-value">{config.multicontext_weight}</span>
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
