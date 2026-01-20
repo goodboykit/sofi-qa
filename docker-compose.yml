@@ -5,12 +5,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      # Mount data volume to persistence (optional, for Source Docs)
-      # But since it's stateless, maybe we don't bind mount?
-      # Actually, user might want to drag-drop files and have them stay?
-      # But session storage clears config. Documents are on server.
-      # If container restarts, documents go away unless mounted.
-      - ./data/source_docs:/app/data/source_docs
+      - ./data:/app/data
     environment:
       # Pass API Key
       - OPENAI_API_KEY=${OPENAI_API_KEY}

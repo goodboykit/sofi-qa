@@ -103,6 +103,37 @@ async def get_config():
     }
 
 
+# ============ Synthetic Data ============
+
+@app.get("/api/synthetic-data")
+async def get_synthetic_data():
+    """Load synthetic data from JSON files on disk."""
+    single_path = SYNTHETIC_DATA_DIR / "single_turn_goldens.json"
+    multi_path = SYNTHETIC_DATA_DIR / "multi_turn_goldens.json"
+    
+    single_data = []
+    multi_data = []
+    
+    if single_path.exists():
+        try:
+            with open(single_path, "r", encoding="utf-8") as f:
+                single_data = json.load(f)
+        except Exception as e:
+            print(f"Error loading single_turn_goldens.json: {e}")
+    
+    if multi_path.exists():
+        try:
+            with open(multi_path, "r", encoding="utf-8") as f:
+                multi_data = json.load(f)
+        except Exception as e:
+            print(f"Error loading multi_turn_goldens.json: {e}")
+    
+    return {
+        "single_turn": single_data,
+        "multi_turn": multi_data
+    }
+
+
 # ============ Documents ============
 
 @app.get("/api/documents")

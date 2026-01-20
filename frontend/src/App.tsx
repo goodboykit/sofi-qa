@@ -104,6 +104,21 @@ function App() {
     }
   }, []);
 
+  // Synthetic Data Fetch
+  const fetchSyntheticData = useCallback(async () => {
+    try {
+      const res = await axios.get('http://localhost:8000/api/synthetic-data');
+      if (res.data.single_turn && res.data.single_turn.length > 0) {
+        setSingleTurnGoldens(res.data.single_turn);
+      }
+      if (res.data.multi_turn && res.data.multi_turn.length > 0) {
+        setMultiTurnGoldens(res.data.multi_turn);
+      }
+    } catch {
+      console.error('Failed to fetch synthetic data');
+    }
+  }, []);
+
   useEffect(() => {
     const initConfig = async () => {
       const saved = window.sessionStorage.getItem('generation_config');
@@ -113,6 +128,16 @@ function App() {
     };
     initConfig();
   }, [fetchConfig]);
+
+  // Load synthetic data on startup
+  useEffect(() => {
+    // Only fetch if session storage is empty
+    const savedSingle = window.sessionStorage.getItem('goldens_single');
+    const savedMulti = window.sessionStorage.getItem('goldens_multi');
+    if (!savedSingle || savedSingle === '[]' || !savedMulti || savedMulti === '[]') {
+      fetchSyntheticData();
+    }
+  }, [fetchSyntheticData]);
 
   const saveConfig = () => {
     // Session storage handles persistence automatically via the hook

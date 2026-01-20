@@ -8,6 +8,17 @@
   box-sizing: border-box;
 }
 
+/* Remove native spin buttons for number inputs */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
 :root {
   /* Background Colors */
   --bg-dark: #0a0a0a;
@@ -65,11 +76,7 @@ body {
   overflow-x: hidden;
 }
 
-/* Number Input Spinners: Force white in dark mode */
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  filter: invert(1);
-}
+
 
 #root {
   min-height: 100vh;
@@ -1379,6 +1386,7 @@ input[type="range"]::-moz-range-thumb {
   height: 100%;
 }
 
+
 .sidebar {
   width: 60px;
   background: var(--bg-card);
@@ -1386,90 +1394,124 @@ input[type="range"]::-moz-range-thumb {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  transition: width 0.25s ease;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
   position: relative;
   z-index: 100;
+  padding-bottom: 20px;
 }
 
 .sidebar:hover {
   width: 240px;
 }
 
-.sidebar:hover .nav-text,
-.sidebar:hover .nav-badge {
-  opacity: 1;
-}
-
-.nav-text {
-  width: 0;
-  opacity: 0;
+/* --- Logo Transition --- */
+.sidebar-logo-container {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  padding-left: 20px;
+  /* Aligns with icon center (60px width -> center is 30px) - wait default icon padding is 14px? */
+  position: relative;
   overflow: hidden;
-  white-space: nowrap;
-  transition: all 0.2s ease;
 }
 
-.sidebar:hover .nav-text {
-  width: auto;
-  opacity: 1;
-}
-
-.nav-badge {
-  display: none;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
-.sidebar:hover .nav-badge {
-  display: inline-block;
-  opacity: 1;
-}
-
-
-
+/* We'll use absolute positioning to cross-fade logos */
 .sidebar-logo {
-  display: block;
+  position: absolute;
+  left: 20px;
+  /* Fixed left position */
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .sidebar-logo-collapsed {
   height: 32px;
   width: auto;
-  display: block;
+  opacity: 1;
+  transform: scale(1);
 }
 
 .sidebar-logo-expanded {
-  height: 36px;
+  height: 32px;
   width: auto;
-  display: none;
+  opacity: 0;
+  transform: scale(0.9);
+  pointer-events: none;
 }
 
 .sidebar:hover .sidebar-logo-collapsed {
-  display: none;
+  opacity: 0;
+  transform: scale(0.9);
 }
 
 .sidebar:hover .sidebar-logo-expanded {
-  display: block;
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
 }
 
-.sidebar:hover .sidebar-brand {
-  justify-content: flex-start;
-  padding-left: 20px;
+
+/* --- Nav Item Transition --- */
+.nav-text {
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  margin-left: 0;
 }
 
+.sidebar:hover .nav-text {
+  max-width: 150px;
+  /* Enough for text */
+  opacity: 1;
+  margin-left: 0;
+  /* managed by gap in current nav-item */
+}
+
+.nav-badge {
+  /* Use absolute pos or flexible margin to avoid jumping */
+  margin-left: auto;
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: all 0.2s ease;
+  background: var(--accent);
+  color: #000;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.sidebar:hover .nav-badge {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+
+/* --- Sidebar Nav Layout --- */
 .sidebar-nav {
   padding: 12px 8px;
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  width: 240px;
+  /* Force inner width so flex items don't shrink during transition */
 }
 
+/* Nav Item */
 .nav-item {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  /* Always start, we use padding to center icon initially? No, initially width is 60. */
   gap: 12px;
-  padding: 14px;
+  padding: 0 14px;
+  /* Fixed side padding */
+  height: 48px;
+  /* Fixed height */
   border-radius: var(--radius);
   border: none;
   background: transparent;
@@ -1481,17 +1523,47 @@ input[type="range"]::-moz-range-thumb {
   transition: all 0.2s ease;
   text-align: left;
   width: 100%;
-  min-height: 48px;
+  position: relative;
+  overflow: hidden;
+  /* crop text when collapsed */
+}
+
+/* With justify-content: flex-start and width 60px, padding 14px:
+   Content box = 32px. Icon is 22px. Gap 12px.
+   So icon takes 22, then gap 12 pushes text out.
+   We need to center the icon when collapsed (width 60).
+   Actually, existing was `justify-content: center` then `flex-start` on hover.
+   That causes jump. 
+   Better: always flex-start, but adjust padding or margin?
+   
+   If sidebar is 60px, padding 8px -> inner 44px.
+   Nav item width 44px.
+   padding 14px -> 44 - 28 = 16px space? Icon is 22px. Won't fit.
+   
+   Let's check sidebar-nav padding: `padding: 12px 8px;` -> sidebar width 60 => inner 44.
+   Icon needs to be centered in that 44px.
+   
+   If we use `padding-left: 11px` (44-22)/2
+*/
+
+.nav-item {
+  padding-left: 11px;
+  /* (44px width - 22px icon) / 2 */
+  padding-right: 0;
 }
 
 .sidebar:hover .nav-item {
-  justify-content: flex-start;
-  padding: 14px 16px;
+  padding-left: 16px;
+  padding-right: 16px;
+  background: transparent;
+  /* hover bg handled below */
 }
 
 .nav-item svg {
   width: 22px;
   height: 22px;
+  min-width: 22px;
+  /* Prevent firing shrink */
   flex-shrink: 0;
 }
 
@@ -1505,29 +1577,23 @@ input[type="range"]::-moz-range-thumb {
   color: var(--accent);
 }
 
-.nav-badge {
-  margin-left: auto;
-  background: var(--accent);
-  color: #000;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 10px;
-}
-
-
-
+/* Status Mini (Footer) */
 .status-mini {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 8px;
   font-size: 12px;
   color: var(--text-muted);
+  white-space: nowrap;
+  padding: 0 14px;
+  height: 48px;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
 .sidebar:hover .status-mini {
-  justify-content: flex-start;
+  opacity: 1;
 }
 
 

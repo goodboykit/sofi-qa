@@ -12,7 +12,7 @@ interface SidebarProps {
 export function Sidebar({ currentPage, setCurrentPage, running, evalRunning, documentsCount, status }: SidebarProps) {
     return (
         <aside className="sidebar">
-            <div className="sidebar-brand">
+            <div className="sidebar-logo-container">
                 <img src="/logo2.png" alt="SoFi" className="sidebar-logo sidebar-logo-collapsed" />
                 <img src="/sofi-logo.png" alt="SoFi" className="sidebar-logo sidebar-logo-expanded" />
             </div>

@@ -1,4 +1,5 @@
 import type { Config } from '../types';
+import { NumberInput } from '../components/common/NumberInput';
 
 interface ConfigurationPageProps {
     config: Config;
@@ -135,13 +136,11 @@ export function ConfigurationPage({ config, setConfig, saveConfig }: Configurati
                                                     <span className="tooltip-text">Number of synthetic Q&A pairs to generate per source document.</span>
                                                 </span>
                                             </label>
-                                            <input
-                                                type="number"
-                                                className="form-input"
-                                                min="1"
-                                                max="50"
+                                            <NumberInput
                                                 value={config.num_goldens}
-                                                onChange={e => setConfig({ ...config, num_goldens: parseInt(e.target.value) || 5 })}
+                                                onChange={val => setConfig({ ...config, num_goldens: val })}
+                                                min={1}
+                                                max={50}
                                             />
                                         </div>
                                         <div className="form-group" style={{ marginBottom: 0 }}>
@@ -151,13 +150,11 @@ export function ConfigurationPage({ config, setConfig, saveConfig }: Configurati
                                                     <span className="tooltip-text">Number of evolution steps to complicate the query (higher = harder questions).</span>
                                                 </span>
                                             </label>
-                                            <input
-                                                type="number"
-                                                className="form-input"
-                                                min="1"
-                                                max="5"
+                                            <NumberInput
                                                 value={config.num_evolutions}
-                                                onChange={e => setConfig({ ...config, num_evolutions: parseInt(e.target.value) || 1 })}
+                                                onChange={val => setConfig({ ...config, num_evolutions: val })}
+                                                min={1}
+                                                max={5}
                                             />
                                         </div>
                                     </div>
@@ -298,13 +295,13 @@ export function ConfigurationPage({ config, setConfig, saveConfig }: Configurati
                                                 </span>
                                             </label>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <input
-                                                    type="number"
-                                                    className="form-input"
-                                                    min="10" max="300" step="10"
-                                                    style={{ flex: 1 }}
+                                                <NumberInput
                                                     value={config.eval_timeout || 60}
-                                                    onChange={e => setConfig({ ...config, eval_timeout: parseInt(e.target.value) || 60 })}
+                                                    onChange={val => setConfig({ ...config, eval_timeout: val })}
+                                                    min={10}
+                                                    max={300}
+                                                    step={10}
+                                                    style={{ flex: 1 }}
                                                 />
                                                 <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>seconds</span>
                                             </div>
@@ -326,13 +323,12 @@ export function ConfigurationPage({ config, setConfig, saveConfig }: Configurati
                                                 </span>
                                             </label>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <input
-                                                    type="number"
-                                                    className="form-input"
-                                                    min="1" max="5" step="1"
-                                                    style={{ flex: 1 }}
+                                                <NumberInput
                                                     value={config.max_user_simulations || 2}
-                                                    onChange={e => setConfig({ ...config, max_user_simulations: parseInt(e.target.value) || 2 })}
+                                                    onChange={val => setConfig({ ...config, max_user_simulations: val })}
+                                                    min={1}
+                                                    max={5}
+                                                    style={{ flex: 1 }}
                                                 />
                                                 <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>rounds</span>
                                             </div>
