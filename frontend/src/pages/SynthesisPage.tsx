@@ -16,6 +16,18 @@ export function SynthesisPage({ status, documents, config, onSynthesisComplete, 
     const [running, setRunning] = useState(false);
     const [progress, setProgress] = useState(0);
     const [results, setResults] = useState<Results | null>(null);
+    const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
+
+    // Initialize selection when documents load
+    useEffect(() => {
+        if (documents.length > 0) {
+            // Only update if selection is empty (first load) or allow preserving selection?
+            // For simplicity and "live" feel, let's select all new docs if selection was empty
+            if (selectedDocs.length === 0) {
+                setSelectedDocs(documents.map(d => d.id));
+            }
+        }
+    }, [documents]);
 
     const consoleRef = useRef<HTMLDivElement>(null);
     const logId = useRef(0);
@@ -67,21 +79,21 @@ export function SynthesisPage({ status, documents, config, onSynthesisComplete, 
             log('Scanning documents');
             setProgress(10);
 
-            const docs = documents;
+            const docsToProcess = documents.filter(d => selectedDocs.includes(d.id));
 
-            if (docs.length === 0) {
-                log('No documents found in data/source_docs/', 'warning');
-                log('Go to Documents page to upload files', 'info');
+            if (docsToProcess.length === 0) {
+                log('No documents selected', 'warning');
+                log('Please select at least one document to proceed', 'info');
                 setRunning(false);
                 return;
             }
 
-            log(`Found ${docs.length} document(s)`, 'success');
+            log(`Processing ${docsToProcess.length} document(s)`, 'success');
             setProgress(20);
 
             // Single-turn
             log('Generating single-turn Q&A', 'primary');
-            const ids = docs.map((d: { id: string }) => d.id);
+            const ids = docsToProcess.map(d => d.id);
 
             const job1 = await axios.post('http://localhost:8000/api/synthesis/start', {
                 document_ids: ids,
