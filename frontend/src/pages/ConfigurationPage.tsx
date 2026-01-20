@@ -121,7 +121,7 @@ export function ConfigurationPage({ config, setConfig, saveConfig }: Configurati
                                 </div>
 
                                 {/* Data Volume & Complexity Grid */}
-                                <div style={{ background: 'var(--bg-card-hover)', padding: '16px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', marginBottom: '24px' }}>
+                                <div style={{ background: 'var(--bg-card-hover)', padding: '16px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', marginBottom: '2px' }}>
                                     <label className="label-with-tooltip" style={{ color: 'var(--accent)', fontWeight: 600, marginBottom: '12px', display: 'flex' }}>
                                         GENERATION SCALE
                                         <span className="info-icon" style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}>i
@@ -162,7 +162,7 @@ export function ConfigurationPage({ config, setConfig, saveConfig }: Configurati
 
                                 {/* Weights Grid */}
                                 <div style={{ background: 'var(--bg-card-hover)', padding: '16px', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
-                                    <label className="label-with-tooltip" style={{ color: 'var(--accent)', fontWeight: 600, marginBottom: '16px', display: 'flex' }}>
+                                    <label className="label-with-tooltip" style={{ color: 'var(--accent)', fontWeight: 600, marginBottom: '12px', display: 'flex' }}>
                                         GENERATION MIX
                                         <span className="info-icon" style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}>i
                                             <span className="tooltip-text">Adjust the balance between different types of synthetic data generation.</span>
@@ -243,7 +243,7 @@ export function ConfigurationPage({ config, setConfig, saveConfig }: Configurati
                                     <textarea
                                         className="form-input"
                                         rows={6}
-                                        style={{ resize: 'vertical', minHeight: '120px', fontSize: '13px', lineHeight: '1.6', height: 'auto', paddingTop: '12px' }}
+                                        style={{ resize: 'vertical', minHeight: '120px', height: 'auto', paddingTop: '12px' }}
                                         value={config.eval_metric_criteria || ''}
                                         onChange={e => setConfig({ ...config, eval_metric_criteria: e.target.value })}
                                         placeholder="Describe exactly what makes a response 'Good' vs 'Bad'. e.g., 'The answer must be polite, concise, and contain at least one citation.'"

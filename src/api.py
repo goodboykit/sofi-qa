@@ -103,6 +103,18 @@ async def get_config():
     }
 
 
+@app.post("/api/config")
+async def save_config(config: dict):
+    """Save configuration to disk."""
+    try:
+        config_path = DATA_DIR / "generation_config.json"
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=2)
+        return {"status": "success", "message": "Configuration saved"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ============ Synthetic Data ============
 
 @app.get("/api/synthetic-data")
