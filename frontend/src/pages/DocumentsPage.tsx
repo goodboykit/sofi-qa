@@ -1,4 +1,5 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
+import axios from 'axios';
 import type { Document } from '../types';
 import { Icons } from '../components/common/Icons';
 
@@ -158,12 +159,14 @@ export function DocumentsPage({ documents, uploading, onUpload, confirmDelete }:
                             </div>
                         </div>
                         <div className="preview-body">
-                            {canPreviewInline(previewDoc.type) ? (
+                            {canPreviewInline(previewDoc.type) && previewDoc.type.toLowerCase() === 'pdf' ? (
                                 <iframe
                                     src={getPreviewUrl(previewDoc)}
                                     className="preview-iframe"
                                     title={`Preview ${previewDoc.name}`}
                                 />
+                            ) : canPreviewInline(previewDoc.type) || ['docx', 'xlsx', 'txt', 'csv'].includes(previewDoc.type.toLowerCase()) ? (
+                                <TextPreview doc={previewDoc} />
                             ) : (
                                 <div className="preview-unsupported">
                                     <div className="preview-unsupported-icon">{Icons.file}</div>
@@ -186,4 +189,51 @@ export function DocumentsPage({ documents, uploading, onUpload, confirmDelete }:
     );
 }
 
+function TextPreview({ doc }: { doc: Document }) {
+    const [content, setContent] = useState<string>('');
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchContent = async () => {
+            try {
+                const res = await axios.get(`http://localhost:8000/api/documents/${doc.id}/preview`);
+                setContent(res.data.content);
+            } catch (err) {
+                setError('Failed to load document preview.');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchContent();
+    }, [doc.id]);
+
+    if (loading) return (
+        <div style={{ padding: '24px', display: 'flex', justifyContent: 'center', color: 'var(--text-muted)' }}>
+            Loading preview...
+        </div>
+    );
+
+    if (error) return (
+        <div style={{ padding: '24px', color: 'var(--error)', textAlign: 'center' }}>
+            {error}
+        </div>
+    );
+
+    return (
+        <div className="text-preview-container" style={{
+            padding: '24px',
+            whiteSpace: 'pre-wrap',
+            fontFamily: 'monospace',
+            fontSize: '13px',
+            lineHeight: '1.5',
+            color: 'var(--text-secondary)',
+            overflowY: 'auto',
+            height: '100%',
+            background: 'var(--bg-card)'
+        }}>
+            {content}
+        </div>
+    );
+}
 

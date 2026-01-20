@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Optional, List
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -59,7 +59,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/files", StaticFiles(directory=SOURCE_DOCS_DIR), name="files")
+# NOTE: Static file serving for source docs is trickier with dynamic paths.
+# We will use the preview endpoint instead for everything.
+
+
+# ============ Helpers ============
+
+def get_session_dir(session_id: str) -> Path:
+    if not session_id or len(session_id) < 8:
+        # Fallback or strict error? Let's be strict for isolation.
+        raise HTTPException(status_code=400, detail="Invalid Session ID")
+    
+    session_path = DATA_DIR / session_id
+    (session_path / "source_docs").mkdir(parents=True, exist_ok=True)
+    (session_path / "synthetic_data").mkdir(parents=True, exist_ok=True)
+    return session_path
 
 
 # ============ Models ============
@@ -79,8 +93,10 @@ class EvaluationRequest(BaseModel):
 # ============ Config ============
 
 @app.get("/api/config")
-async def get_config():
-    config_path = DATA_DIR / "generation_config.json"
+async def get_config(x_session_id: str = Header(...)):
+    session_path = get_session_dir(x_session_id)
+    config_path = session_path / "generation_config.json"
+    
     if config_path.exists():
         with open(config_path, "r", encoding="utf-8") as f:
             return json.load(f)
@@ -104,10 +120,12 @@ async def get_config():
 
 
 @app.post("/api/config")
-async def save_config(config: dict):
+async def save_config(config: dict, x_session_id: str = Header(...)):
     """Save configuration to disk."""
     try:
-        config_path = DATA_DIR / "generation_config.json"
+        session_path = get_session_dir(x_session_id)
+        config_path = session_path / "generation_config.json"
+        
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=2)
         return {"status": "success", "message": "Configuration saved"}
@@ -118,10 +136,13 @@ async def save_config(config: dict):
 # ============ Synthetic Data ============
 
 @app.get("/api/synthetic-data")
-async def get_synthetic_data():
+async def get_synthetic_data(x_session_id: str = Header(...)):
     """Load synthetic data from JSON files on disk."""
-    single_path = SYNTHETIC_DATA_DIR / "single_turn_goldens.json"
-    multi_path = SYNTHETIC_DATA_DIR / "multi_turn_goldens.json"
+    session_path = get_session_dir(x_session_id)
+    syn_dir = session_path / "synthetic_data"
+    
+    single_path = syn_dir / "single_turn_goldens.json"
+    multi_path = syn_dir / "multi_turn_goldens.json"
     
     single_data = []
     multi_data = []
@@ -149,23 +170,27 @@ async def get_synthetic_data():
 # ============ Documents ============
 
 @app.get("/api/documents")
-async def list_documents():
+async def list_documents(x_session_id: str = Header(...)):
+    session_path = get_session_dir(x_session_id)
+    docs_dir = session_path / "source_docs"
+    
     documents = []
-    for file_path in SOURCE_DOCS_DIR.iterdir():
-        if file_path.suffix.lower() in [".pdf", ".docx", ".xlsx", ".csv", ".txt"]:
-            stat = file_path.stat()
-            documents.append({
-                "id": file_path.stem,
-                "name": file_path.name,
-                "size": stat.st_size,
-                "uploaded_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
-                "type": file_path.suffix[1:].upper()
-            })
+    if docs_dir.exists():
+        for file_path in docs_dir.iterdir():
+            if file_path.suffix.lower() in [".pdf", ".docx", ".xlsx", ".csv", ".txt"]:
+                stat = file_path.stat()
+                documents.append({
+                    "id": file_path.stem,
+                    "name": file_path.name,
+                    "size": stat.st_size,
+                    "uploaded_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                    "type": file_path.suffix[1:].upper()
+                })
     return {"documents": documents}
 
 
 @app.post("/api/documents/upload")
-async def upload_document(file: UploadFile = File(...)):
+async def upload_document(file: UploadFile = File(...), x_session_id: str = Header(...)):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
     
@@ -173,7 +198,8 @@ async def upload_document(file: UploadFile = File(...)):
     if suffix not in [".pdf", ".docx", ".xlsx", ".csv", ".txt"]:
         raise HTTPException(status_code=400, detail="Only PDF, DOCX, XLSX, CSV, TXT supported")
     
-    file_path = SOURCE_DOCS_DIR / file.filename
+    session_path = get_session_dir(x_session_id)
+    file_path = session_path / "source_docs" / file.filename
     content = await file.read()
     file_path.write_bytes(content)
     
@@ -181,23 +207,57 @@ async def upload_document(file: UploadFile = File(...)):
 
 
 @app.delete("/api/documents/{doc_id}")
-async def delete_document(doc_id: str):
+async def delete_document(doc_id: str, x_session_id: str = Header(...)):
+    session_path = get_session_dir(x_session_id)
+    docs_dir = session_path / "source_docs"
+    
     for ext in [".pdf", ".docx", ".xlsx", ".csv", ".txt", ".PDF", ".DOCX", ".XLSX", ".CSV", ".TXT"]:
-        file_path = SOURCE_DOCS_DIR / f"{doc_id}{ext}"
+        file_path = docs_dir / f"{doc_id}{ext}"
         if file_path.exists():
             file_path.unlink()
             return {"message": f"Document {doc_id} deleted"}
     raise HTTPException(status_code=404, detail="Document not found")
 
 
+@app.get("/api/documents/{doc_id}/preview")
+async def preview_document(doc_id: str, x_session_id: str = Header(...)):
+    """Return extracted text for preview purposes."""
+    session_path = get_session_dir(x_session_id)
+    docs_dir = session_path / "source_docs"
+    
+    found_path = None
+    for ext in [".pdf", ".docx", ".xlsx", ".csv", ".txt", ".PDF", ".DOCX", ".XLSX", ".CSV", ".TXT"]:
+        file_path = docs_dir / f"{doc_id}{ext}"
+        if file_path.exists():
+            found_path = file_path
+            break
+            
+    if not found_path:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    try:
+        # Pass session path to generator
+        generator = DatasetGenerator({}, base_dir=session_path)
+        contexts = generator._get_document_contexts([str(found_path)])
+        full_text = "\n\n".join(contexts)
+        
+        if not full_text.strip():
+            return {"content": "No text content extractable from this file."}
+            
+        return {"content": full_text}
+    except Exception as e:
+        return {"content": f"Error generating preview: {str(e)}"}
+
+
 # ============ Synthesis ============
 
-def run_synthesis_job(job_id: str, doc_paths: List[str], syn_type: str, max_goldens: int, config: dict):
+def run_synthesis_job(job_id: str, doc_paths: List[str], syn_type: str, max_goldens: int, config: dict, session_path: Path):
     try:
         synthesis_jobs[job_id]["status"] = "running"
         synthesis_jobs[job_id]["message"] = f"Generating {syn_type}-turn Q&A..."
         
-        generator = DatasetGenerator(config)
+        # Pass session_path as base_dir
+        generator = DatasetGenerator(config, base_dir=session_path)
         goldens = generator.generate_single_turn(doc_paths) if syn_type == "single" else generator.generate_multi_turn(doc_paths)
         
         synthesis_jobs[job_id]["result"] = {"count": len(goldens) if goldens else 0, "type": syn_type, "data": goldens}
@@ -210,11 +270,14 @@ def run_synthesis_job(job_id: str, doc_paths: List[str], syn_type: str, max_gold
 
 
 @app.post("/api/synthesis/start")
-async def start_synthesis(request: SynthesisRequest, background_tasks: BackgroundTasks):
+async def start_synthesis(request: SynthesisRequest, background_tasks: BackgroundTasks, x_session_id: str = Header(...)):
+    session_path = get_session_dir(x_session_id)
+    docs_dir = session_path / "source_docs"
+    
     doc_paths = []
     for doc_id in request.document_ids:
         for ext in [".pdf", ".docx", ".PDF", ".DOCX"]:
-            file_path = SOURCE_DOCS_DIR / f"{doc_id}{ext}"
+            file_path = docs_dir / f"{doc_id}{ext}"
             if file_path.exists():
                 doc_paths.append(str(file_path))
                 break
@@ -225,7 +288,7 @@ async def start_synthesis(request: SynthesisRequest, background_tasks: Backgroun
     job_id = str(uuid.uuid4())[:8]
     synthesis_jobs[job_id] = {"job_id": job_id, "status": "pending", "progress": 0, "message": "Queued...", "result": None}
     
-    background_tasks.add_task(run_synthesis_job, job_id, doc_paths, request.synthesis_type, request.max_goldens_per_context, request.config or {})
+    background_tasks.add_task(run_synthesis_job, job_id, doc_paths, request.synthesis_type, request.max_goldens_per_context, request.config or {}, session_path)
     return {"job_id": job_id, "message": "Synthesis started"}
 
 
@@ -387,8 +450,7 @@ async def stream_evaluation(job_id: str):
 async def health_check():
     return {
         "status": "healthy",
-        "version": "1.0.0",
-        "documents_count": len(list(SOURCE_DOCS_DIR.glob("*.pdf")) + list(SOURCE_DOCS_DIR.glob("*.docx")))
+        "version": "1.0.0"
     }
 
 

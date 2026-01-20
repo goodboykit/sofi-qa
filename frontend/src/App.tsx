@@ -64,7 +64,24 @@ function App() {
   const syntheticData = dataTab === 'single' ? singleTurnGoldens : multiTurnGoldens;
 
   // Init
+  // Init Session & API
   useEffect(() => {
+    // 1. Session ID Management
+    let sessionId = localStorage.getItem('sofi_session_id');
+    if (!sessionId) {
+      // Simple fallback UUID generator since we might not have 'uuid' package installed
+      sessionId = 'sess-' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      localStorage.setItem('sofi_session_id', sessionId);
+    }
+
+    // 2. Axios Interceptor
+    // Remove existing interceptors to prevent duplicates on hot reload
+    axios.interceptors.request.clear();
+    axios.interceptors.request.use(config => {
+      config.headers['x-session-id'] = sessionId;
+      return config;
+    });
+
     const timer = setTimeout(() => setLoading(false), 2300);
     return () => clearTimeout(timer);
   }, []);

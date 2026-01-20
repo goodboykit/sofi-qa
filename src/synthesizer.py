@@ -7,7 +7,16 @@ import json
 from pathlib import Path
 
 class DatasetGenerator:
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, base_dir: Path = None):
+        # Base directory for this session
+        self.base_dir = base_dir if base_dir else Path("data")
+        self.source_docs_dir = self.base_dir / "source_docs"
+        self.synthetic_data_dir = self.base_dir / "synthetic_data"
+        
+        # Ensure directories exist
+        self.source_docs_dir.mkdir(parents=True, exist_ok=True)
+        self.synthetic_data_dir.mkdir(parents=True, exist_ok=True)
+
         # Extract settings from the passed config
         api_key = config.get("api_key")
         model_name = config.get("model_name", "gpt-4o-mini")
@@ -96,7 +105,18 @@ class DatasetGenerator:
                 elif suffix == '.docx':
                     from docx import Document
                     doc = Document(path)
-                    text = "\n".join([para.text for para in doc.paragraphs if para.text.strip()])
+                    
+                    # Extract paragraphs
+                    full_text = [para.text for para in doc.paragraphs if para.text.strip()]
+                    
+                    # Extract tables
+                    for table in doc.tables:
+                        for row in table.rows:
+                            row_text = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+                            if row_text:
+                                full_text.append(" | ".join(row_text))
+                                
+                    text = "\n".join(full_text)
                 elif suffix == '.xlsx':
                     text = self._extract_from_excel(str(path))
                 elif suffix == '.csv':
@@ -144,7 +164,7 @@ class DatasetGenerator:
         if not self.synthesizer.synthetic_goldens:
             raise ValueError("No goldens were generated. Please check your documents.")
         
-        self.synthesizer.save_as(file_type='json', directory="data/synthetic_data", file_name="single_turn_goldens")
+        self.synthesizer.save_as(file_type='json', directory=str(self.synthetic_data_dir), file_name="single_turn_goldens")
 
     def generate_multi_turn(self, paths: List[str]):
         # Clear both lists to be safe and ensure clean generation
@@ -176,4 +196,4 @@ class DatasetGenerator:
         if not self.synthesizer.synthetic_conversational_goldens:
             raise ValueError("No conversations were generated. Please check your documents.")
         
-        self.synthesizer.save_as(file_type='json', directory="data/synthetic_data", file_name="multi_turn_goldens")
+        self.synthesizer.save_as(file_type='json', directory=str(self.synthetic_data_dir), file_name="multi_turn_goldens")
