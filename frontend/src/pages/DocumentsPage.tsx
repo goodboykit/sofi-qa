@@ -51,7 +51,7 @@ export function DocumentsPage({ documents, uploading, onUpload, confirmDelete }:
     };
 
     const getPreviewUrl = (doc: Document) => {
-        return `http://localhost:8000/files/${doc.name}`;
+        return `/files/${doc.name}`;
     };
 
     const canPreviewInline = (type: string) => {
@@ -197,7 +197,7 @@ function TextPreview({ doc }: { doc: Document }) {
     useEffect(() => {
         const fetchContent = async () => {
             try {
-                const res = await axios.get(`http://localhost:8000/api/documents/${doc.id}/preview`);
+                const res = await axios.get(`/api/documents/${doc.id}/preview`);
                 setContent(res.data.content);
             } catch (err) {
                 setError('Failed to load document preview.');

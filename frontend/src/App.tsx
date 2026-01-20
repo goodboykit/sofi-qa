@@ -90,7 +90,7 @@ function App() {
   useEffect(() => {
     const check = async () => {
       try {
-        await axios.get('http://localhost:8000/api/health');
+        await axios.get('/api/health');
         setStatus('online');
       } catch {
         setStatus('offline');
@@ -103,7 +103,7 @@ function App() {
 
   const fetchDocuments = useCallback(async () => {
     try {
-      const response = await axios.get('http://localhost:8000/api/documents');
+      const response = await axios.get('/api/documents');
       setDocuments(response.data.documents || []);
     } catch {
       // silent
@@ -117,7 +117,7 @@ function App() {
   // Config Fetch
   const fetchConfig = useCallback(async () => {
     try {
-      const res = await axios.get('http://localhost:8000/api/config');
+      const res = await axios.get('/api/config');
       setConfig(res.data);
     } catch {
       console.error('Failed to fetch config');
@@ -127,7 +127,7 @@ function App() {
   // Synthetic Data Fetch
   const fetchSyntheticData = useCallback(async () => {
     try {
-      const res = await axios.get('http://localhost:8000/api/synthetic-data');
+      const res = await axios.get('/api/synthetic-data');
       if (res.data.single_turn && res.data.single_turn.length > 0) {
         setSingleTurnGoldens(res.data.single_turn);
       }
@@ -161,7 +161,7 @@ function App() {
 
   const saveConfig = async () => {
     try {
-      await axios.post('http://localhost:8000/api/config', config);
+      await axios.post('/api/config', config);
       setSuccessModalOpen(true);
     } catch (err) {
       console.error('Failed to save config:', err);
@@ -184,7 +184,7 @@ function App() {
     formData.append('file', file);
 
     try {
-      await axios.post('http://localhost:8000/api/documents/upload', formData, {
+      await axios.post('/api/documents/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       await fetchDocuments();
@@ -199,7 +199,7 @@ function App() {
   const deleteDocument = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this document?")) return;
     try {
-      await axios.delete(`http://localhost:8000/api/documents/${id}`);
+      await axios.delete(`/api/documents/${id}`);
       await fetchDocuments();
     } catch {
       alert('Failed to delete');

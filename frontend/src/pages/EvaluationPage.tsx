@@ -38,7 +38,7 @@ export function EvaluationPage({ status, singleTurnGoldens, multiTurnGoldens, co
 
         try {
             // Start evaluation job
-            const startRes = await axios.post('http://localhost:8000/api/evaluation/start', {
+            const startRes = await axios.post('/api/evaluation/start', {
                 single_turn_goldens: singleTurnGoldens,
                 multi_turn_goldens: multiTurnGoldens,
                 config: config
@@ -47,7 +47,7 @@ export function EvaluationPage({ status, singleTurnGoldens, multiTurnGoldens, co
             const jobId = startRes.data.job_id;
             setEvalMessage('Connecting to event stream...');
 
-            const eventSource = new EventSource(`http://localhost:8000/api/evaluation/stream?job_id=${jobId}`);
+            const eventSource = new EventSource(`/api/evaluation/stream?job_id=${jobId}`);
             evalEventSourceRef.current = eventSource;
 
             eventSource.addEventListener('log', (e) => {

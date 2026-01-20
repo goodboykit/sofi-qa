@@ -57,6 +57,10 @@ Type this in PowerShell:
 ```powershell
 ./run.ps1
 ```
+*Or if you have Docker Desktop installed:*
+```bash
+docker-compose up --build
+```
 
 **What happens next?**
 1. The computer creates a special folder for Python stuff (`.venv`).
@@ -65,6 +69,13 @@ Type this in PowerShell:
 4. It starts the **Backend server** (the brain) on port `8000`.
 5. It starts the **Frontend website** (what you see) on port `5173`.
 6. Open your browser to `http://localhost:5173` to start!
+
+### 🐳 Running with Docker (Recommended for Deployment)
+If you want to run everything in a clean, isolated container (just like on the cloud):
+```bash
+docker-compose up --build
+```
+This starts both the backend and frontend at `http://localhost:8000`.
 
 ---
 

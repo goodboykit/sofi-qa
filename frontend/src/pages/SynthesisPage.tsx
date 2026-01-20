@@ -101,7 +101,7 @@ export function SynthesisPage({ status, documents, config, onSynthesisComplete, 
                 await new Promise(r => setTimeout(r, 2000));
                 if (shouldStop.current) break;
 
-                const res = await axios.get(`http://localhost:8000/api/synthesis/status/${job1.data.job_id}`);
+                const res = await axios.get(`/api/synthesis/status/${job1.data.job_id}`);
 
                 if (res.data.status === 'running') {
                     log(res.data.message);
@@ -124,7 +124,7 @@ export function SynthesisPage({ status, documents, config, onSynthesisComplete, 
             // Multi-turn
             log('Generating multi-turn conversations', 'primary');
 
-            const job2 = await axios.post('http://localhost:8000/api/synthesis/start', {
+            const job2 = await axios.post('/api/synthesis/start', {
                 document_ids: ids,
                 synthesis_type: 'multi',
                 max_goldens_per_context: 3,
@@ -141,7 +141,7 @@ export function SynthesisPage({ status, documents, config, onSynthesisComplete, 
                 await new Promise(r => setTimeout(r, 2000));
                 if (shouldStop.current) break;
 
-                const res = await axios.get(`http://localhost:8000/api/synthesis/status/${job2.data.job_id}`);
+                const res = await axios.get(`/api/synthesis/status/${job2.data.job_id}`);
 
                 if (res.data.status === 'running') {
                     log(res.data.message);
@@ -194,7 +194,7 @@ export function SynthesisPage({ status, documents, config, onSynthesisComplete, 
 
         for (const jobId of currentJobIds.current) {
             try {
-                await axios.post(`http://localhost:8000/api/synthesis/cancel/${jobId}`);
+                await axios.post(`/api/synthesis/cancel/${jobId}`);
                 log(`Job ${jobId} cancelled`, 'warning');
             } catch {
                 // Job may have already completed
