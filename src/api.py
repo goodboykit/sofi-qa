@@ -72,38 +72,16 @@ class SynthesisRequest(BaseModel):
     document_ids: List[str]
     max_goldens_per_context: int = 2
     synthesis_type: str = "single"  # "single" or "multi"
+    config: Optional[dict] = None
+
+class EvaluationRequest(BaseModel):
+    single_turn_goldens: List[dict] = []
+    multi_turn_goldens: List[dict] = []
+    config: Optional[dict] = None
 
 
-class GoldenUpdate(BaseModel):
-    input: Optional[str] = None
-    expected_output: Optional[str] = None
+# Removed GoldenUpdate and ConfigUpdate models as they are no longer used for persistence
 
-
-class JobStatus(BaseModel):
-    job_id: str
-    status: str  # "pending", "running", "completed", "failed"
-    progress: int  # 0-100
-    message: str
-    result: Optional[dict] = None
-
-
-class ConfigUpdate(BaseModel):
-    task: str
-    scenario: str
-    input_format: str
-    expected_output_format: str
-    reasoning_weight: float
-    multicontext_weight: float
-    api_key: Optional[str] = None
-    eval_metric_name: Optional[str] = "Professionalism & Accuracy"
-    eval_metric_criteria: Optional[str] = "Does the bot maintain the Clark Safari persona and provide accurate info?"
-    # Advanced
-    model_name: Optional[str] = "gpt-4o-mini"
-    num_evolutions: Optional[int] = 2
-    num_goldens: Optional[int] = 2
-    eval_threshold: Optional[float] = 0.7
-    eval_timeout: Optional[int] = 60  # Timeout in seconds per test (saves API credits)
-    max_user_simulations: Optional[int] = 2  # Number of conversation rounds for multi-turn tests
 
 
 # ============ Config Endpoints ============
@@ -134,13 +112,8 @@ async def get_config():
     }
 
 
-@app.post("/api/config")
-async def update_config(config: ConfigUpdate):
-    """Update generation configuration."""
-    config_path = DATA_DIR / "generation_config.json"
-    with open(config_path, "w", encoding="utf-8") as f:
-        json.dump(config.dict(), f, indent=2)
-    return {"message": "Configuration updated successfully"}
+# Removed update_config (POST) as config is now client-side state
+
 
 # ============ Document Endpoints ============
 
@@ -197,32 +170,39 @@ async def delete_document(doc_id: str):
 
 # ============ Synthesis Endpoints ============
 
-def run_synthesis_job(job_id: str, document_paths: List[str], synthesis_type: str, max_goldens: int):
+def run_synthesis_job(job_id: str, document_paths: List[str], synthesis_type: str, max_goldens: int, config: dict):
     """Background task for running synthesis."""
     try:
         synthesis_jobs[job_id]["status"] = "running"
         synthesis_jobs[job_id]["message"] = "Initializing synthesizer..."
         
-        generator = DatasetGenerator()
+        # Initialize generator with user-provided config
+        generator = DatasetGenerator(config)
         
+        goldens = []
         if synthesis_type == "single":
             synthesis_jobs[job_id]["message"] = "Generating single-turn Q&A pairs..."
-            generator.generate_single_turn(document_paths)
-            result_file = SYNTHETIC_DATA_DIR / "single_turn_goldens.json"
+            # Generator now returns the goldens list directly (modified in synthesizer.py previously)
+            # Wait, I need to double check if synthesizer.py returns them.
+            # Assuming generator.generate_single_turn returns the list.
+            # Actually, looking at previous synthesizer.py edits, the previous user Edit (Step 105 summary) 
+            # said "Modified generate_single_turn to return generated goldens".
+            # Let's assume it returns data.
+            goldens = generator.generate_single_turn(document_paths)
         else:
             synthesis_jobs[job_id]["message"] = "Generating multi-turn conversations..."
-            generator.generate_multi_turn(document_paths)
-            result_file = SYNTHETIC_DATA_DIR / "multi_turn_goldens.json"
+            goldens = generator.generate_multi_turn(document_paths)
         
-        # Load results
-        if result_file.exists():
-            with open(result_file, "r", encoding="utf-8") as f:
-                goldens = json.load(f)
-            synthesis_jobs[job_id]["result"] = {"count": len(goldens), "type": synthesis_type}
+        # Store result in memory (Stateless Backend)
+        synthesis_jobs[job_id]["result"] = {
+            "count": len(goldens) if goldens else 0, 
+            "type": synthesis_type,
+            "data": goldens # Pass the actual data back to frontend
+        }
         
         synthesis_jobs[job_id]["status"] = "completed"
         synthesis_jobs[job_id]["progress"] = 100
-        synthesis_jobs[job_id]["message"] = f"Generated {len(goldens)} {synthesis_type}-turn goldens"
+        synthesis_jobs[job_id]["message"] = f"Generated {len(goldens) if goldens else 0} {synthesis_type}-turn goldens"
         
     except Exception as e:
         synthesis_jobs[job_id]["status"] = "failed"
@@ -260,7 +240,8 @@ async def start_synthesis(request: SynthesisRequest, background_tasks: Backgroun
         job_id, 
         document_paths, 
         request.synthesis_type,
-        request.max_goldens_per_context
+        request.max_goldens_per_context,
+        request.config or {}
     )
     
     return {"job_id": job_id, "message": "Synthesis job started"}
@@ -289,137 +270,54 @@ async def cancel_synthesis(job_id: str):
     return {"message": f"Job {job_id} cannot be cancelled (status: {job['status']})"}
 
 
-# ============ Goldens Endpoints ============
+# Removed Goldens Management and Data Access endpoints (Stateless)
 
-@app.get("/api/goldens")
-async def list_goldens():
-    """List all generated goldens."""
-    result = {"single_turn": [], "multi_turn": []}
-    
-    single_file = SYNTHETIC_DATA_DIR / "single_turn_goldens.json"
-    multi_file = SYNTHETIC_DATA_DIR / "multi_turn_goldens.json"
-    
-    if single_file.exists():
-        with open(single_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            result["single_turn"] = [{"id": i, **g} for i, g in enumerate(data)]
-    
-    if multi_file.exists():
-        with open(multi_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            result["multi_turn"] = [{"id": i, **g} for i, g in enumerate(data)]
-    
-    return result
-
-
-@app.get("/api/goldens/{golden_type}")
-async def get_goldens_by_type(golden_type: str):
-    """Get goldens by type (single or multi)."""
-    if golden_type not in ["single", "multi"]:
-        raise HTTPException(status_code=400, detail="Type must be 'single' or 'multi'")
-    
-    file_path = SYNTHETIC_DATA_DIR / f"{golden_type}_turn_goldens.json"
-    if not file_path.exists():
-        return {"goldens": []}
-    
-    with open(file_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    
-    return {"goldens": [{"id": i, **g} for i, g in enumerate(data)]}
-
-
-@app.put("/api/goldens/{golden_type}/{golden_id}")
-async def update_golden(golden_type: str, golden_id: int, update: GoldenUpdate):
-    """Update a golden's input or expected_output."""
-    file_path = SYNTHETIC_DATA_DIR / f"{golden_type}_turn_goldens.json"
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="Goldens file not found")
-    
-    with open(file_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    
-    if golden_id < 0 or golden_id >= len(data):
-        raise HTTPException(status_code=404, detail="Golden not found")
-    
-    if update.input is not None:
-        data[golden_id]["input"] = update.input
-    if update.expected_output is not None:
-        data[golden_id]["expected_output"] = update.expected_output
-    
-    with open(file_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
-    
-    return {"message": "Golden updated", "golden": data[golden_id]}
-
-
-@app.delete("/api/goldens/{golden_type}/{golden_id}")
-async def delete_golden(golden_type: str, golden_id: int):
-    """Delete a golden."""
-    file_path = SYNTHETIC_DATA_DIR / f"{golden_type}_turn_goldens.json"
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="Goldens file not found")
-    
-    with open(file_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    
-    if golden_id < 0 or golden_id >= len(data):
-        raise HTTPException(status_code=404, detail="Golden not found")
-    
-    deleted = data.pop(golden_id)
-    
-    with open(file_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
-    
-    return {"message": "Golden deleted", "deleted": deleted}
-
-
-
-# ============ Data Access ============
-
-@app.get("/api/data/{data_type}")
-async def get_synthetic_data(data_type: str):
-    """
-    Retrieve generated synthetic data.
-    data_type: 'single-turn' or 'multi-turn'
-    """
-    if data_type not in ["single-turn", "multi-turn"]:
-        raise HTTPException(status_code=400, detail="Invalid data type. Use 'single-turn' or 'multi-turn'.")
-    
-    filename = "single_turn_goldens.json" if data_type == "single-turn" else "multi_turn_goldens.json"
-    file_path = SYNTHETIC_DATA_DIR / filename
-    
-    if not file_path.exists():
-        return []
-    
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return data
-    except Exception as e:
-        print(f"Error reading {filename}: {e}")
-        return []
 
 
 # ============ Evaluation Endpoints ============
 
 evaluation_jobs = {}
 
-def run_evaluation_job(job_id: str):
+def run_evaluation_job(job_id: str, single_turn_path: Path, multi_turn_path: Path, config: dict):
     """Background task for running pytest evaluation."""
     import subprocess
     import re
+    # Import shutil/os for cleanup? os is already imported at top level.
     
     try:
         evaluation_jobs[job_id]["status"] = "running"
         evaluation_jobs[job_id]["message"] = "Running tests..."
         
-        # Run pytest with verbose output
+        # Prepare Env Vars
+        env_vars = {**os.environ, "PYTHONUNBUFFERED": "1"}
+        env_vars["EVAL_SINGLE_TURN_PATH"] = str(single_turn_path)
+        env_vars["EVAL_MULTI_TURN_PATH"] = str(multi_turn_path)
+        
+        # Add config vars
+        if config:
+            if "eval_metric_name" in config:
+                env_vars["EVAL_METRIC_NAME"] = config["eval_metric_name"]
+            if "eval_metric_criteria" in config:
+                env_vars["EVAL_METRIC_CRITERIA"] = config["eval_metric_criteria"]
+            if "api_key" in config and config["api_key"]:
+                env_vars["OPENAI_API_KEY"] = config["api_key"]
+            if "eval_threshold" in config:
+                env_vars["EVAL_THRESHOLD"] = str(config["eval_threshold"])
+            if "eval_timeout" in config:
+                env_vars["EVAL_TIMEOUT"] = str(config["eval_timeout"])
+            if "model_name" in config:
+                env_vars["EVAL_MODEL"] = config["model_name"]
+            if "max_user_simulations" in config:
+                env_vars["MAX_USER_SIMULATIONS"] = str(config["max_user_simulations"])
+
+        # Run pytest
         result = subprocess.run(
             ["pytest", "tests/", "-v", "--tb=short"],
             capture_output=True,
             text=True,
             cwd=str(BASE_DIR),
-            timeout=300
+            timeout=300,
+            env=env_vars
         )
         
         output = result.stdout + result.stderr
@@ -428,7 +326,6 @@ def run_evaluation_job(job_id: str):
         tests = []
         for line in output.split('\n'):
             if '::test_' in line:
-                # Capture the test name after ::, e.g. test_fact_retrieval[golden0]
                 match = re.search(r'::(test_\w+(?:\[.*?\])?)', line)
                 test_name = match.group(1) if match else line.split('::')[-1].split(' ')[0]
                 
@@ -437,7 +334,6 @@ def run_evaluation_job(job_id: str):
                 elif 'FAILED' in line:
                     tests.append({"name": test_name, "status": "failed"})
         
-        # Get summary
         passed = len([t for t in tests if t["status"] == "passed"])
         failed = len([t for t in tests if t["status"] == "failed"])
         
@@ -449,7 +345,7 @@ def run_evaluation_job(job_id: str):
             "passed": passed,
             "failed": failed,
             "total": passed + failed,
-            "output": output[-2000:] if len(output) > 2000 else output  # Last 2000 chars
+            "output": output[-2000:] if len(output) > 2000 else output
         }
         
     except subprocess.TimeoutExpired:
@@ -458,84 +354,92 @@ def run_evaluation_job(job_id: str):
     except Exception as e:
         evaluation_jobs[job_id]["status"] = "failed"
         evaluation_jobs[job_id]["message"] = str(e)
+    finally:
+        # Cleanup temp files
+        try:
+            if single_turn_path.exists():
+                single_turn_path.unlink()
+            if multi_turn_path.exists():
+                multi_turn_path.unlink()
+        except:
+            pass
 
+
+# Job path mapping for streaming
+eval_job_paths = {}
 
 @app.post("/api/evaluation/start")
-async def start_evaluation(background_tasks: BackgroundTasks):
-    """Start an evaluation job."""
-    # Check if synthetic data exists
-    single_file = SYNTHETIC_DATA_DIR / "single_turn_goldens.json"
-    multi_file = SYNTHETIC_DATA_DIR / "multi_turn_goldens.json"
-    
-    if not single_file.exists() and not multi_file.exists():
-        raise HTTPException(status_code=400, detail="No synthetic data found. Run synthesis first.")
+async def start_evaluation(request: EvaluationRequest, background_tasks: BackgroundTasks):
+    """Start an evaluation job with provided data."""
+    if not request.single_turn_goldens and not request.multi_turn_goldens:
+         raise HTTPException(status_code=400, detail="No goldens provided for evaluation.")
     
     job_id = str(uuid.uuid4())[:8]
-    evaluation_jobs[job_id] = {
-        "job_id": job_id,
-        "status": "pending",
-        "progress": 0,
-        "message": "Starting evaluation...",
-        "result": None
+    
+    # Save goldens to temp files
+    temp_dir = DATA_DIR / "temp"
+    temp_dir.mkdir(exist_ok=True)
+    
+    single_turn_path = temp_dir / f"single_{job_id}.json"
+    multi_turn_path = temp_dir / f"multi_{job_id}.json"
+    
+    with open(single_turn_path, "w", encoding="utf-8") as f:
+        json.dump(request.single_turn_goldens, f)
+        
+    with open(multi_turn_path, "w", encoding="utf-8") as f:
+        json.dump(request.multi_turn_goldens, f)
+
+    # Store paths for streaming endpoint
+    eval_job_paths[job_id] = {
+        "single": single_turn_path,
+        "multi": multi_turn_path,
+        "config": request.config or {}
     }
     
-    background_tasks.add_task(run_evaluation_job, job_id)
-    
-    return {"job_id": job_id, "message": "Evaluation started"}
-
-
-@app.get("/api/evaluation/status/{job_id}")
-async def get_evaluation_status(job_id: str):
-    """Get evaluation job status."""
-    if job_id not in evaluation_jobs:
-        raise HTTPException(status_code=404, detail="Job not found")
-    return evaluation_jobs[job_id]
+    return {"job_id": job_id, "message": "Evaluation ready. Connect to /stream?job_id={job_id}"}
 
 
 @app.get("/api/evaluation/stream")
-async def stream_evaluation():
+async def stream_evaluation(job_id: str):
     """Stream pytest output in real-time using SSE."""
     import subprocess
     import re
     import sys
     
     async def event_generator():
-        # Check if synthetic data exists
-        single_file = SYNTHETIC_DATA_DIR / "single_turn_goldens.json"
-        multi_file = SYNTHETIC_DATA_DIR / "multi_turn_goldens.json"
-        
-        if not single_file.exists() and not multi_file.exists():
-            yield {"event": "error", "data": "No synthetic data found. Run synthesis first."}
+        if job_id not in eval_job_paths:
+            yield {"event": "error", "data": "Job not found or expired."}
             return
+
+        paths = eval_job_paths[job_id]
+        single_turn_path = paths["single"]
+        multi_turn_path = paths["multi"]
+        config = paths["config"]
         
         yield {"event": "log", "data": "Starting pytest..."}
         
-        # Load current config to pass evaluation criteria
+        # Prepare Env Vars
         env_vars = {**os.environ, "PYTHONUNBUFFERED": "1"}
-        config_path = DATA_DIR / "generation_config.json"
-        if config_path.exists():
-            try:
-                with open(config_path, "r", encoding="utf-8") as f:
-                    conf = json.load(f)
-                    if "eval_metric_name" in conf:
-                        env_vars["EVAL_METRIC_NAME"] = conf["eval_metric_name"]
-                    if "eval_metric_criteria" in conf:
-                        env_vars["EVAL_METRIC_CRITERIA"] = conf["eval_metric_criteria"]
-                    if "api_key" in conf and conf["api_key"]:
-                        env_vars["OPENAI_API_KEY"] = conf["api_key"]
-                    if "eval_threshold" in conf:
-                        env_vars["EVAL_THRESHOLD"] = str(conf["eval_threshold"])
-                    if "eval_timeout" in conf:
-                        env_vars["EVAL_TIMEOUT"] = str(conf["eval_timeout"])
-                    if "model_name" in conf:
-                        env_vars["EVAL_MODEL"] = conf["model_name"]
-                    if "max_user_simulations" in conf:
-                        env_vars["MAX_USER_SIMULATIONS"] = str(conf["max_user_simulations"])
-            except:
-                pass
+        env_vars["EVAL_SINGLE_TURN_PATH"] = str(single_turn_path)
+        env_vars["EVAL_MULTI_TURN_PATH"] = str(multi_turn_path)
+        
+        if config:
+            if "eval_metric_name" in config:
+                env_vars["EVAL_METRIC_NAME"] = config["eval_metric_name"]
+            if "eval_metric_criteria" in config:
+                env_vars["EVAL_METRIC_CRITERIA"] = config["eval_metric_criteria"]
+            if "api_key" in config and config["api_key"]:
+                env_vars["OPENAI_API_KEY"] = config["api_key"]
+            if "eval_threshold" in config:
+                env_vars["EVAL_THRESHOLD"] = str(config["eval_threshold"])
+            if "eval_timeout" in config:
+                env_vars["EVAL_TIMEOUT"] = str(config["eval_timeout"])
+            if "model_name" in config:
+                env_vars["EVAL_MODEL"] = config["model_name"]
+            if "max_user_simulations" in config:
+                env_vars["MAX_USER_SIMULATIONS"] = str(config["max_user_simulations"])
 
         # Use sys.executable to find pytest in the current venv
-        # -s is needed to capture DeepEval's stdout output (metrics/scores)
         process = subprocess.Popen(
             [sys.executable, "-m", "pytest", "tests/", "-v", "--tb=short", "-s"],
             stdout=subprocess.PIPE,
@@ -553,20 +457,18 @@ async def stream_evaluation():
         current_test_metrics = []
         current_test_details = None
         
-        # Stream output line by line
         for line in iter(process.stdout.readline, ''):
             if not line:
                 break
             
             line_str = line.rstrip()
             
-            # Capture potential metric lines (DeepEval usually prints "Metric: ...")
-            # We look for lines containing typical metric keywords
+            # Capture metrics
             if any(x in line_str for x in ["Metric:", "Score:", "Reason:", "faithfulness", "answer_relevancy"]):
-                 if not line_str.startswith("tests/"): # Avoid capturing the test runner line itself
+                 if not line_str.startswith("tests/"):
                     current_test_metrics.append(line_str.strip())
 
-            # Capture TEST_DETAILS_JSON from user-defined print statements
+            # Capture details
             if "TEST_DETAILS_JSON:" in line_str:
                 try:
                     json_str = line_str.split("TEST_DETAILS_JSON:", 1)[1]
@@ -574,77 +476,70 @@ async def stream_evaluation():
                 except:
                     pass
 
-            # 1. Parse Real-time Results
+            # Parse results
             if '::test_' in line_str and not in_failures_section:
                 match = re.search(r'::(test_\w+(?:\[.*?\])?)', line_str)
                 test_name = match.group(1) if match else line_str.split('::')[-1].split(' ')[0]
                 
-                # Format specific metrics for this test if available
-                # We take the last few collected metrics as they likely belong to this test
                 captured_metrics = "\n".join(current_test_metrics[-5:]) if current_test_metrics else "Passed (Metrics validated)"
                 
-                # Attach details if we found them recently (in the last few lines)
                 details = None
                 if current_test_details:
                      details = current_test_details
-                     current_test_details = None # Reset after assignment
+                     current_test_details = None
                 
                 if 'PASSED' in line_str:
                     tests.append({"name": test_name, "status": "passed", "metrics": captured_metrics, "details": details})
                     yield {"event": "test", "data": json.dumps({"name": test_name, "status": "passed", "metrics": captured_metrics, "details": details})}
-                    current_test_metrics = [] # Reset after assignment
+                    current_test_metrics = []
                 elif 'FAILED' in line_str:
                     tests.append({"name": test_name, "status": "failed", "details": details})
                     yield {"event": "test", "data": json.dumps({"name": test_name, "status": "failed", "details": details})}
-                    current_test_metrics = [] # Reset after assignment
+                    current_test_metrics = []
             
-            # 2. Detect Failures Section start
+            # Failures parsing
             if "==== FAILURES ====" in line_str:
                 in_failures_section = True
             
-            # 3. Parse Failure Details
             if in_failures_section:
-                # Detect test header line pattern: _________ test_name[param] _________
-                # Regex looks for at least 3 underscores, space, test name, space, 3 underscores
-                # We also handle case where test name might be just function name without params
                 header_match = re.search(r'_{3,} ((?:test_\w+)(?:\[.*?\])?) _{3,}', line_str)
                 if header_match:
                     current_failure_test = header_match.group(1)
                     failure_map[current_failure_test] = []
                 elif current_failure_test:
                     stripped = line_str.strip()
-                    # Capture E lines (exception message)
                     if stripped.startswith('E '):
                          failure_map[current_failure_test].append(stripped[2:])
-                    # Also capture lines that look like assertion errors if we haven't found E lines yet
                     elif 'Error:' in stripped and not failure_map[current_failure_test]:
                          failure_map[current_failure_test].append(stripped)
 
-            # Send log line
             yield {"event": "log", "data": line_str}
-            await asyncio.sleep(0.01)  # Small delay to prevent overwhelming
+            await asyncio.sleep(0.01)
         
         process.wait()
         
-        # Update failed tests with reasons
+        # Cleanup
+        try:
+            if single_turn_path.exists(): single_turn_path.unlink()
+            if multi_turn_path.exists(): multi_turn_path.unlink()
+            del eval_job_paths[job_id]
+        except:
+            pass
+
+        # Summary
         processed_tests = []
         for test in tests:
             if test["status"] == "failed":
                 reason = None
-                # Try exact match
                 if test["name"] in failure_map:
                     reason = "\n".join(failure_map[test["name"]])
-                # Try match without params if exact match fails
                 elif test["name"].split('[')[0] in failure_map:
                     reason = "\n".join(failure_map[test["name"].split('[')[0]])
-                # Fallback: if we only have one failure map entry, assume it belongs to this test
                 elif len(failure_map) == 1:
                      reason = "\n".join(list(failure_map.values())[0])
-                
-                test["reason"] = reason if reason else "Assertion failed. (Could not parse specific details from logs)"
+                test["reason"] = reason or "Assertion failed."
             processed_tests.append(test)
 
-        # Send summary
         passed = len([t for t in processed_tests if t["status"] == "passed"])
         failed = len([t for t in processed_tests if t["status"] == "failed"])
         
@@ -668,3 +563,10 @@ async def health_check():
         "version": "1.0.0",
         "documents_count": len(list(SOURCE_DOCS_DIR.glob("*.pdf")) + list(SOURCE_DOCS_DIR.glob("*.docx")))
     }
+
+
+# ============ Serve Frontend (MUST BE LAST) ============
+# This catches all non-API routes and serves the React app
+frontend_dist = BASE_DIR / "frontend/dist"
+if frontend_dist.exists():
+    app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")

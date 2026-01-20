@@ -37,17 +37,26 @@ EVAL_MODEL = os.getenv("EVAL_MODEL", "gpt-4o-mini")
 MAX_USER_SIMULATIONS = int(os.getenv("MAX_USER_SIMULATIONS", "2"))
 
 # ============ Load Datasets ============
+SINGLE_TURN_PATH = os.getenv("EVAL_SINGLE_TURN_PATH", "data/synthetic_data/single_turn_goldens.json")
+MULTI_TURN_PATH = os.getenv("EVAL_MULTI_TURN_PATH", "data/synthetic_data/multi_turn_goldens.json")
+
 single_ds = EvaluationDataset()
 try:
-    single_ds.add_goldens_from_json_file(file_path="data/synthetic_data/single_turn_goldens.json")
-except FileNotFoundError:
-    print("Warning: single_turn_goldens.json not found. Run synthesis first.")
+    if os.path.exists(SINGLE_TURN_PATH):
+        single_ds.add_goldens_from_json_file(file_path=SINGLE_TURN_PATH)
+    else:
+         print(f"Warning: {SINGLE_TURN_PATH} not found.")
+except Exception as e:
+    print(f"Error loading single turn data: {e}")
 
 multi_ds = EvaluationDataset()
 try:
-    multi_ds.add_goldens_from_json_file(file_path="data/synthetic_data/multi_turn_goldens.json")
-except FileNotFoundError:
-    print("Warning: multi_turn_goldens.json not found. Run synthesis first.")
+    if os.path.exists(MULTI_TURN_PATH):
+        multi_ds.add_goldens_from_json_file(file_path=MULTI_TURN_PATH)
+    else:
+        print(f"Warning: {MULTI_TURN_PATH} not found.")
+except Exception as e:
+    print(f"Error loading multi turn data: {e}")
 
 
 # ============ GROUP 1: Single-Turn Performance ============

@@ -1,21 +1,20 @@
 from typing import List
 from deepeval.synthesizer import Synthesizer
 from deepeval.synthesizer.config import EvolutionConfig, Evolution, StylingConfig, FiltrationConfig
-from src.config import get_model
+
 
 import json
 from pathlib import Path
 
 class DatasetGenerator:
-    def __init__(self):
-        self.model = get_model()
+    def __init__(self, config: dict):
+        # Extract settings from the passed config
+        api_key = config.get("api_key")
+        model_name = config.get("model_name", "gpt-4o-mini")
         
-        # Load config dynamically
-        config_path = Path("data/generation_config.json")
-        config = {}
-        if config_path.exists():
-            with open(config_path, "r", encoding="utf-8") as f:
-                config = json.load(f)
+        # Initialize model directly with config values
+        from deepeval.models import GPTModel
+        self.model = GPTModel(model=model_name, api_key=api_key)
 
         # Config defaults
         reasoning_weight = config.get("reasoning_weight", 0.5)
