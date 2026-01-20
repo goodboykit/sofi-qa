@@ -9,6 +9,8 @@ import asyncio
 import subprocess
 import re
 import sys
+import shutil
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, List
@@ -37,10 +39,51 @@ evaluation_jobs = {}
 eval_job_paths = {}
 
 
+# ============ Garbage Collection ============
+
+async def cleanup_stale_sessions():
+    """Periodically remove session directories older than 24 hours."""
+    while True:
+        try:
+            # Run every hour
+            await asyncio.sleep(3600)
+            
+            print("🧹 Running session cleanup...")
+            now = time.time()
+            cutoff = now - (24 * 3600)  # 24 hours
+            
+            if DATA_DIR.exists():
+                for item in DATA_DIR.iterdir():
+                    # Only delete session directories (uuid-ish or 'sess-' prefixed)
+                    # We preserve 'generated_data' or other static folders if they exist
+                    if item.is_dir() and (item.name.startswith('sess-') or len(item.name) > 8):
+                        # Check modification time
+                        mtime = item.stat().st_mtime
+                        if mtime < cutoff:
+                            print(f"   Deleting stale session: {item.name}")
+                            shutil.rmtree(item)
+                            
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            print(f"❌ Error in session cleanup: {e}")
+            await asyncio.sleep(60)  # Retry after a minute on error
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Start GC task
+    gc_task = asyncio.create_task(cleanup_stale_sessions())
     print("🚀 SoFi-QA API starting...")
+    
     yield
+    
+    # Cancel GC task
+    gc_task.cancel()
+    try:
+        await gc_task
+    except asyncio.CancelledError:
+        pass
     print("👋 SoFi-QA API shutting down...")
 
 

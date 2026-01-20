@@ -67,11 +67,12 @@ function App() {
   // Init Session & API
   useEffect(() => {
     // 1. Session ID Management
-    let sessionId = localStorage.getItem('sofi_session_id');
+    // Use sessionStorage so data is cleared when the tab/browser is closed
+    let sessionId = sessionStorage.getItem('sofi_session_id');
     if (!sessionId) {
-      // Simple fallback UUID generator since we might not have 'uuid' package installed
+      // Generate new UUID for this specific browser session
       sessionId = 'sess-' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-      localStorage.setItem('sofi_session_id', sessionId);
+      sessionStorage.setItem('sofi_session_id', sessionId);
     }
 
     // 2. Axios Interceptor
