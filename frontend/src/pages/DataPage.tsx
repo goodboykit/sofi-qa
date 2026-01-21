@@ -59,11 +59,11 @@ export function DataPage({ syntheticData, dataTab, setDataTab }: DataPageProps) 
                                         <div className="data-display-stack">
                                             <div className="data-box input">
                                                 <span className="data-box-label">Scenario</span>
-                                                {item.scenario}
+                                                {item.scenario || item.input}
                                             </div>
                                             <div className="data-box output">
                                                 <span className="data-box-label">Expected Outcome</span>
-                                                {item.expected_outcome}
+                                                {item.expected_outcome || item.expected_output}
                                             </div>
                                         </div>
                                     )}

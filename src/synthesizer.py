@@ -143,12 +143,14 @@ class DatasetGenerator:
     def generate_single_turn(self, paths: List[str]):
         self.synthesizer.synthetic_goldens = []
         all_goldens = []
+        last_error = None
         
         for path in paths:
             file_name = Path(path).name
             contexts = self._get_document_contexts([path])
             
             if not contexts:
+                print(f"Warning: No text extracted from {file_name}")
                 continue
 
             # Contexts must be List[List[str]]
@@ -160,8 +162,7 @@ class DatasetGenerator:
                 batch_goldens = self.synthesizer.generate_goldens_from_contexts(
                     contexts=formatted_contexts,
                     max_goldens_per_context=self.num_goldens,
-                    include_expected_output=True,
-                    _show_indicator=False # minor optimization if available, else ignored
+                    include_expected_output=True
                 )
                 
                 # Manually inject source file
@@ -172,9 +173,13 @@ class DatasetGenerator:
                 
             except Exception as e:
                 print(f"Error generating for {file_name}: {e}")
+                last_error = e
 
         if not all_goldens:
-            raise ValueError("No goldens were generated. Please check your documents.")
+            # Re-raise the actual error if we have one, otherwise generic
+            if last_error:
+                raise last_error
+            raise ValueError("No goldens were generated. Please check your documents or API key.")
         
         # Update the synthesizer's list so save_as works correctly
         self.synthesizer.synthetic_goldens = all_goldens
@@ -185,6 +190,7 @@ class DatasetGenerator:
         self.synthesizer.synthetic_goldens = []
         self.synthesizer.synthetic_conversational_goldens = []
         all_conversations = []
+        last_error = None
         
         for path in paths:
             file_name = Path(path).name
@@ -202,15 +208,13 @@ class DatasetGenerator:
                 if hasattr(self.synthesizer, 'generate_conversational_goldens_from_contexts'):
                      batch_conversations = self.synthesizer.generate_conversational_goldens_from_contexts(
                         contexts=formatted_contexts,
-                        max_goldens_per_context=self.num_goldens,
-                        _show_indicator=False
+                        max_goldens_per_context=self.num_goldens
                      )
                 else:
                     # Fallback to legacy method name
                     batch_conversations = self.synthesizer.generate_conversational_goldens(
                         contexts=formatted_contexts,
-                        max_goldens_per_context=self.num_goldens,
-                        _show_indicator=False
+                        max_goldens_per_context=self.num_goldens
                     )
                 
                 # Manually inject source file (multi-turn structure might differ, checking standard property)
@@ -221,21 +225,24 @@ class DatasetGenerator:
                 all_conversations.extend(batch_conversations)
 
             except Exception as e:
+                last_error = e
                 # If one method fails, try the other as fallback (legacy behavior fallback logic preserved)
-                 try:
+                try:
                      batch_conversations = self.synthesizer.generate_conversational_goldens(
                         contexts=formatted_contexts,
-                        max_goldens_per_context=self.num_goldens,
-                        _show_indicator=False
+                        max_goldens_per_context=self.num_goldens
                      )
                      for conv in batch_conversations:
                         if hasattr(conv, 'source_file'):
                             conv.source_file = file_name
                      all_conversations.extend(batch_conversations)
-                 except Exception:
+                     last_error = None # Clear error if fallback worked
+                except Exception:
                      print(f"Error generating multi-turn for {file_name}: {e}")
         
         if not all_conversations:
+            if last_error:
+                raise last_error
             raise ValueError("No conversations were generated. Please check your documents.")
         
         # Update proper list for saving
