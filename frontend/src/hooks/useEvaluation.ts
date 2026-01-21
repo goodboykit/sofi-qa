@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import type { Config } from '../types';
 
@@ -9,6 +9,27 @@ export function useEvaluation() {
     const [logs, setLogs] = useState<string[]>([]);
     const [progress, setProgress] = useState(0);
     const eventSourceRef = useRef<EventSource | null>(null);
+
+    // Fetch latest results on mount for session persistence
+    useEffect(() => {
+        const fetchLatest = async () => {
+            // Only fetch if no result currently (e.g. fresh reload)
+            if (!result) {
+                try {
+                    const res = await axios.get('/api/evaluation/latest');
+                    if (res.data) {
+                        setResult(res.data);
+                        setLogs(['--- Loaded previous session results ---']);
+                        setProgress(100);
+                    }
+                } catch (err) {
+                    // Fail silently, just means no previous results
+                    console.log('No previous session results found.');
+                }
+            }
+        };
+        fetchLatest();
+    }, []);
 
     const start = async (singleTurn: any[], multiTurn: any[], config: Config, status: string) => {
         if (status !== 'online') {
@@ -34,7 +55,8 @@ export function useEvaluation() {
             const jobId = startRes.data.job_id;
             setMessage('Connecting to event stream...');
 
-            const eventSource = new EventSource(`/api/evaluation/stream?job_id=${jobId}`);
+            const sessionId = sessionStorage.getItem('sofi_session_id');
+            const eventSource = new EventSource(`/api/evaluation/stream?job_id=${jobId}&session_id=${sessionId}`);
             eventSourceRef.current = eventSource;
 
             eventSource.addEventListener('log', (e) => {

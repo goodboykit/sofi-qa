@@ -221,6 +221,9 @@ class DatasetGenerator:
                 for conv in batch_conversations:
                     if hasattr(conv, 'source_file'):
                         conv.source_file = file_name
+                    # Standardize expected_output for frontend consistency
+                    if hasattr(conv, 'expected_outcome'):
+                        conv.expected_output = conv.expected_outcome
                         
                 all_conversations.extend(batch_conversations)
 
@@ -235,6 +238,10 @@ class DatasetGenerator:
                      for conv in batch_conversations:
                         if hasattr(conv, 'source_file'):
                             conv.source_file = file_name
+                        # Standardize expected_output for frontend consistency
+                        if hasattr(conv, 'expected_outcome'):
+                            conv.expected_output = conv.expected_outcome
+                            
                      all_conversations.extend(batch_conversations)
                      last_error = None # Clear error if fallback worked
                 except Exception:

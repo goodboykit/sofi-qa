@@ -352,11 +352,12 @@ input[type="range"]::-moz-range-thumb {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   width: 100%;
-  max-width: 440px;
+  max-width: 640px;
   min-width: 380px;
+  max-height: 85vh;
+  overflow-y: auto;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   animation: slideUp 0.3s ease;
-  overflow: hidden;
 }
 
 .modal-header {
@@ -2415,4 +2416,142 @@ select.form-input optgroup {
   font-weight: 600;
   font-style: normal;
   padding: 8px 0;
+}
+
+/* ========================================
+   Test Details Modal & Evaluation UI
+   ======================================== */
+
+.test-details-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.modal-status-badge {
+  align-self: flex-start;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.modal-status-badge.success {
+  background: rgba(0, 201, 167, 0.15);
+  color: var(--success);
+  border: 1px solid rgba(0, 201, 167, 0.3);
+}
+
+.modal-status-badge.danger {
+  background: rgba(255, 92, 92, 0.15);
+  color: var(--error);
+  border: 1px solid rgba(255, 92, 92, 0.3);
+}
+
+.detail-section h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Structured Error Parsing */
+.structured-error {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: rgba(255, 92, 92, 0.05);
+  border: 1px solid rgba(255, 92, 92, 0.2);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.error-metric,
+.error-score {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.error-reason {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.structured-error .label {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+  min-width: 80px;
+}
+
+.structured-error .value {
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.structured-error .value.danger {
+  color: var(--error);
+}
+
+.structured-error .value.warning {
+  color: var(--warning);
+}
+
+.error-reason p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 10px;
+  border-radius: 4px;
+}
+
+.raw-error {
+  font-family: monospace;
+  font-size: 13px;
+  color: var(--error);
+  background: rgba(255, 92, 92, 0.05);
+  padding: 12px;
+  border-radius: var(--radius);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* Details Grid */
+.details-grid {
+  display: grid;
+  gap: 20px;
+}
+
+.detail-block h5 {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detail-block pre {
+  font-family: var(--font);
+  /* Use standard font, not monospace, for readability */
+  font-size: 14px;
+  color: var(--text-secondary);
+  background: var(--bg-input);
+  padding: 12px;
+  border-radius: var(--radius);
+  white-space: pre-wrap;
+  line-height: 1.6;
+  border: 1px solid var(--border);
+}
+
+.detail-block.error-block pre {
+  border-color: rgba(255, 92, 92, 0.3);
+  background: rgba(255, 92, 92, 0.05);
 }

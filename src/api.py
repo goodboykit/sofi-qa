@@ -410,8 +410,37 @@ async def start_evaluation(request: EvaluationRequest):
     return {"job_id": job_id}
 
 
+@app.get("/api/evaluation/latest")
+async def get_latest_evaluation(x_session_id: str = Header(None)):
+    """Retrieve the most recent evaluation result for this session."""
+    session_path = get_session_dir(x_session_id)
+    results_dir = session_path / "synthetic_data"
+    
+    if not results_dir.exists():
+        return None
+        
+    # Find all evaluation result files
+    files = list(results_dir.glob("evaluation_results_*.json"))
+    if not files:
+        return None
+        
+    # Sort by modification time (newest first)
+    latest_file = max(files, key=os.path.getmtime)
+    
+    try:
+        content = json.loads(latest_file.read_text(encoding='utf-8'))
+        return content
+    except Exception as e:
+        print(f"Error reading evaluation file: {e}")
+        return None
+
+
 @app.get("/api/evaluation/stream")
-async def stream_evaluation(job_id: str):
+async def stream_evaluation(job_id: str, x_session_id: Optional[str] = Header(None), session_id: Optional[str] = None):
+    # EventSource cannot send headers, so we accept session_id as a query param
+    actual_session_id = session_id or x_session_id
+    session_path = get_session_dir(actual_session_id)
+      
     async def event_generator():
         if job_id not in eval_job_paths:
             yield {"event": "error", "data": "Job not found"}
@@ -500,6 +529,26 @@ async def stream_evaluation(job_id: str):
         passed = sum(1 for t in tests if t["status"] == "passed")
         failed = len(tests) - passed
         
+        # Save results to session storage
+        try:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            results_dir = session_path / "synthetic_data"
+            results_dir.mkdir(parents=True, exist_ok=True)
+            results_file = results_dir / f"evaluation_results_{timestamp}.json"
+            
+            with open(results_file, 'w', encoding='utf-8') as f:
+                json.dump({
+                    "timestamp": timestamp,
+                    "metrics": {
+                        "passed": passed,
+                        "failed": failed,
+                        "total": len(tests)
+                    },
+                    "tests": tests
+                }, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            print(f"Failed to save evaluation results: {e}")
+
         yield {"event": "complete", "data": json.dumps({"tests": tests, "passed": passed, "failed": failed, "total": len(tests)})}
     
     return EventSourceResponse(event_generator())

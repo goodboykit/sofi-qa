@@ -86,7 +86,7 @@ def test_conversation_quality(convo_golden):
     for test_case in test_cases:
         details = {
             "messages": [t.content for t in test_case.turns] if test_case.turns else [],
-            "expected_outcome": getattr(convo_golden, 'expected_outcome', "Professional and accurate response")
+            "expected_outcome": getattr(convo_golden, 'expected_output', getattr(convo_golden, 'expected_outcome', "Professional and accurate response"))
         }
         print(f"\nTEST_DETAILS_JSON:{json.dumps(details)}")
         
