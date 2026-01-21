@@ -222,11 +222,29 @@ function App() {
   };
 
   const deleteDocument = async () => {
-    if (!deleteConfirmModal.docId) return;
+    // Determine the filename to delete
+    // If docId matches a name in our list, use that name. 
+    // Otherwise fallback to docId which might be the stem.
+    // The backend matching logic is imperfect if we just send stem.
+    // Ideally, we should send the full filename.
+
+    // Find the full document object to get the real filename
+    const doc = documents.find(d => d.id === deleteConfirmModal.docId);
+    const filename = doc ? doc.name : deleteConfirmModal.docName;
+
+    if (!filename) return;
+
     try {
-      await axios.delete(`/api/documents/${deleteConfirmModal.docId}`);
+      // We will change the backend to accept filename instead of just ID
+      // But for now, let's use the ID and fix the backend to be smarter 
+      // OR update the backend to take explicit filename query param
+
+      // Let's try deleting by passing the full filename as the ID, 
+      // and update backend to handle it if it contains an extension.
+      await axios.delete(`/api/documents/${encodeURIComponent(filename)}`);
       await fetchDocuments();
-    } catch {
+    } catch (e) {
+      console.error(e);
       alert('Failed to delete');
     } finally {
       setDeleteConfirmModal({ open: false, docId: '', docName: '' });

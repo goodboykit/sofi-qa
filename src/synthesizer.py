@@ -129,36 +129,25 @@ class DatasetGenerator:
                 
                 if text.strip():
                     # Split into chunks of ~2000 chars for better context handling
-                    # This ensures we don't exceed token limits while keeping semantic chunks
                     chunk_size = 2000
-                    current_chunks = 0
                     for i in range(0, len(text), chunk_size):
                         chunk = text[i:i+chunk_size].strip()
                         if chunk:
                             contexts.append(chunk)
-                            current_chunks += 1
-                    print(f"✅ Extracted {current_chunks} chunks from {path_obj.name}")
-                else:
-                    print(f"⚠️ No text found in {path_obj.name}")
-                    
-            except Exception as e:
-                print(f"❌ Error reading {path_obj.name}: {e}")
+                            
+            except Exception:
+                pass
                 
         return contexts
 
     def generate_single_turn(self, paths: List[str]):
-        # Reset internal list to ensure file is clean
         self.synthesizer.synthetic_goldens = []
         
-        # 1. Manually extract contexts to ensure high quality for ALL formats
-        print(f"📊 Processing {len(paths)} document(s) for synthesis")
         contexts = self._get_document_contexts(paths)
-        
         if not contexts:
             raise ValueError("No readable text found in documents. Please check file contents.")
 
-        # 2. Pass extracted contexts to DeepEval
-        self.synthesizer.generate_goldens(
+        self.synthesizer.generate_goldens_from_contexts(
             contexts=contexts,
             max_goldens_per_context=self.num_goldens,
             include_expected_output=True
@@ -170,27 +159,28 @@ class DatasetGenerator:
         self.synthesizer.save_as(file_type='json', directory=str(self.synthetic_data_dir), file_name="single_turn_goldens")
 
     def generate_multi_turn(self, paths: List[str]):
-        # Clear both lists to be safe and ensure clean generation
         self.synthesizer.synthetic_goldens = []
         self.synthesizer.synthetic_conversational_goldens = []
         
-        # 1. Manually extract contexts
-        print(f"📊 Processing {len(paths)} document(s) for synthesis")
         contexts = self._get_document_contexts(paths)
-
         if not contexts:
             raise ValueError("No readable text found in documents. Please check file contents.")
             
-        # 2. Generate conversational goldens from contexts
-        # We use the explicit context method to ensure our custom extraction (which supports xlsx/csv/txt) is used
         try:
-            self.synthesizer.generate_conversational_goldens(
-                contexts=contexts,
-                max_goldens_per_context=self.num_goldens
-            )
+             # Support both new and legacy DeepEval versions
+             if hasattr(self.synthesizer, 'generate_goldens_from_contexts'):
+                 self.synthesizer.generate_goldens_from_contexts(
+                    contexts=contexts,
+                    max_goldens_per_context=self.num_goldens,
+                    _type="conversational"
+                 )
+             else:
+                self.synthesizer.generate_conversational_goldens(
+                    contexts=contexts,
+                    max_goldens_per_context=self.num_goldens
+                )
         except AttributeError:
-             # Fallback if specific method name differs slightly in version
-             self.synthesizer.generate_goldens(
+             self.synthesizer.generate_goldens_from_contexts(
                 contexts=contexts,
                 max_goldens_per_context=self.num_goldens,
                 _type="conversational"
