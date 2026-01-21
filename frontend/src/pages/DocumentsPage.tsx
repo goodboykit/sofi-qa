@@ -51,7 +51,8 @@ export function DocumentsPage({ documents, uploading, onUpload, confirmDelete }:
     };
 
     const getPreviewUrl = (doc: Document) => {
-        return `/files/${doc.name}`;
+        const sessionId = sessionStorage.getItem('sofi_session_id');
+        return `/api/files/${encodeURIComponent(doc.name)}?session_id=${sessionId}`;
     };
 
     const canPreviewInline = (type: string) => {

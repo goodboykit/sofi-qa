@@ -19,6 +19,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
@@ -236,6 +237,23 @@ async def upload_document(file: UploadFile = File(...), x_session_id: str = Head
     file_path.write_bytes(content)
     
     return {"id": file_path.stem, "name": file.filename, "size": len(content)}
+
+
+@app.get("/api/files/{filename}")
+async def serve_file(filename: str, session_id: str):
+    """Serve a source file for a specific session."""
+    session_path = get_session_dir(session_id)
+    base_docs_dir = (session_path / "source_docs").resolve()
+    file_path = (base_docs_dir / filename).resolve()
+    
+    # Security check: Ensure file is actually inside the source_docs directory
+    if not str(file_path).startswith(str(base_docs_dir)):
+        raise HTTPException(status_code=403, detail="Access denied")
+        
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+        
+    return FileResponse(file_path)
 
 
 @app.delete("/api/documents/{doc_id}")
