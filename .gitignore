@@ -46,3 +46,6 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# Session data (contains user configs with potential API keys)
+data/

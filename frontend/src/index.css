@@ -352,24 +352,24 @@ input[type="range"]::-moz-range-thumb {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   width: 100%;
-  max-width: 400px;
+  max-width: 440px;
+  min-width: 380px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   animation: slideUp 0.3s ease;
   overflow: hidden;
 }
 
 .modal-header {
-  padding: 16px 24px;
+  padding: 20px 28px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
   background: var(--bg-card-hover);
-  /* Added subtle background */
 }
 
 .modal-title {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 600;
   color: var(--text-primary);
   display: flex;
@@ -392,7 +392,6 @@ input[type="range"]::-moz-range-thumb {
 
 .modal-close:hover {
   background: rgba(255, 92, 92, 0.1);
-  /* Subtle red tint */
   color: var(--error);
   border-color: rgba(255, 92, 92, 0.2);
 }
@@ -403,16 +402,15 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .modal-body {
-  padding: 24px;
+  padding: 28px 32px;
   color: var(--text-secondary);
   font-size: 14px;
   line-height: 1.6;
 }
 
 .modal-actions {
-  padding: 16px 24px;
+  padding: 20px 28px;
   background: var(--bg-card);
-  /* Keep separate or match header logic */
   border-top: 1px solid var(--border);
   display: flex;
   align-items: center;

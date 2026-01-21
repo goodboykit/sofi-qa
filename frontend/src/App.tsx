@@ -60,6 +60,7 @@ function App() {
   const [successModalOpen, setSuccessModalOpen] = useState(false);
   const [uploadSuccessModal, setUploadSuccessModal] = useState<{ open: boolean, filename: string }>({ open: false, filename: '' });
   const [deleteConfirmModal, setDeleteConfirmModal] = useState<{ open: boolean, docId: string, docName: string }>({ open: false, docId: '', docName: '' });
+  const [overwriteModal, setOverwriteModal] = useState<{ open: boolean, file: File | null }>({ open: false, file: null });
 
   // Derived
   const syntheticData = dataTab === 'single' ? singleTurnGoldens : multiTurnGoldens;
@@ -180,6 +181,17 @@ function App() {
       return;
     }
 
+    // Check if file already exists
+    const existingDoc = documents.find(d => d.name.toLowerCase() === file.name.toLowerCase());
+    if (existingDoc) {
+      setOverwriteModal({ open: true, file });
+      return;
+    }
+
+    await performUpload(file);
+  };
+
+  const performUpload = async (file: File) => {
     setUploading(true);
     const formData = new FormData();
     formData.append('file', file);
@@ -195,6 +207,13 @@ function App() {
       alert('Upload failed. Please try again.');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const confirmOverwrite = async () => {
+    if (overwriteModal.file) {
+      setOverwriteModal({ open: false, file: null });
+      await performUpload(overwriteModal.file);
     }
   };
 
@@ -299,8 +318,8 @@ function App() {
         }
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <p>Configuration has been saved successfully.</p>
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+          <p style={{ margin: 0, fontWeight: 500, color: 'var(--text-primary)' }}>Configuration has been saved successfully.</p>
+          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>
             Your settings have been written to disk and will persist across restarts.
           </p>
         </div>
@@ -308,25 +327,17 @@ function App() {
       <Modal
         isOpen={uploadSuccessModal.open}
         onClose={() => setUploadSuccessModal({ open: false, filename: '' })}
-        title="Upload Successful"
+        title="Success"
         footer={
           <button className="btn-secondary" onClick={() => setUploadSuccessModal({ open: false, filename: '' })}>
             Close
           </button>
         }
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center' }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(74, 222, 128, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '8px' }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-          </div>
-          <p style={{ fontWeight: 500 }}>Document uploaded successfully!</p>
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', wordBreak: 'break-all' }}>
-            <strong>{uploadSuccessModal.filename}</strong>
-          </p>
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-            Your document is ready for synthesis.
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <p style={{ margin: 0, fontWeight: 500, color: 'var(--text-primary)' }}>Document uploaded successfully.</p>
+          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)', wordBreak: 'break-all' }}>
+            <strong>{uploadSuccessModal.filename}</strong> is ready for synthesis.
           </p>
         </div>
       </Modal>
@@ -345,19 +356,32 @@ function App() {
           </div>
         }
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', textAlign: 'center' }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="3 6 5 6 21 6"></polyline>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            </svg>
-          </div>
-          <p style={{ fontWeight: 500 }}>Are you sure you want to delete this document?</p>
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', wordBreak: 'break-all' }}>
-            <strong>{deleteConfirmModal.docName}</strong>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <p style={{ margin: 0, fontWeight: 500, color: 'var(--text-primary)' }}>Are you sure you want to delete this document?</p>
+          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)', wordBreak: 'break-all' }}>
+            <strong>{deleteConfirmModal.docName}</strong> will be permanently removed.
           </p>
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-            This action cannot be undone.
+        </div>
+      </Modal>
+      <Modal
+        isOpen={overwriteModal.open}
+        onClose={() => setOverwriteModal({ open: false, file: null })}
+        title="Replace File"
+        footer={
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <button className="btn-secondary" onClick={() => setOverwriteModal({ open: false, file: null })}>
+              Cancel
+            </button>
+            <button className="btn" onClick={confirmOverwrite} style={{ background: '#f59e0b', borderColor: '#f59e0b' }}>
+              Replace
+            </button>
+          </div>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <p style={{ margin: 0, fontWeight: 500, color: 'var(--text-primary)' }}>A file with this name already exists.</p>
+          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)', wordBreak: 'break-all' }}>
+            <strong>{overwriteModal.file?.name}</strong> will be replaced with the new file.
           </p>
         </div>
       </Modal>

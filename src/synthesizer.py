@@ -2,7 +2,7 @@ from typing import List
 from deepeval.synthesizer import Synthesizer
 from deepeval.synthesizer.config import EvolutionConfig, Evolution, StylingConfig, FiltrationConfig
 
-
+import os
 import json
 from pathlib import Path
 
@@ -18,8 +18,11 @@ class DatasetGenerator:
         self.synthetic_data_dir.mkdir(parents=True, exist_ok=True)
 
         # Extract settings from the passed config
-        api_key = config.get("api_key")
+        api_key = config.get("api_key") or os.getenv("OPENAI_API_KEY")
         model_name = config.get("model_name", "gpt-4o-mini")
+        
+        if not api_key:
+            raise ValueError("OpenAI API key is empty. Please configure a valid key.")
         
         # Initialize model directly with config values
         from deepeval.models import GPTModel
