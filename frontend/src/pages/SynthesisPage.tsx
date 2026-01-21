@@ -84,7 +84,7 @@ export function SynthesisPage({ status, documents, config, onSynthesisComplete, 
             log('Generating single-turn Q&A', 'primary');
             const ids = docsToProcess.map(d => d.id);
 
-            const job1 = await axios.post('http://localhost:8000/api/synthesis/start', {
+            const job1 = await axios.post('/api/synthesis/start', {
                 document_ids: ids,
                 synthesis_type: 'single',
                 max_goldens_per_context: 2,

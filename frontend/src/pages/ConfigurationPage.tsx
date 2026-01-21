@@ -45,9 +45,37 @@ export function ConfigurationPage({ config, setConfig, saveConfig }: Configurati
                                         value={config.model_name}
                                         onChange={e => setConfig({ ...config, model_name: e.target.value })}
                                     >
-                                        <option value="gpt-4o-mini">gpt-4o-mini</option>
-                                        <option value="gpt-4o">gpt-4o</option>
-                                        <option value="gpt-3.5-turbo">gpt-3.5-turbo (Legacy)</option>
+                                        <optgroup label="Recommended">
+                                            <option value="gpt-4o-mini">gpt-4o-mini (Fast & Affordable)</option>
+                                            <option value="gpt-4o">gpt-4o (Flagship)</option>
+                                        </optgroup>
+                                        <optgroup label="GPT-4.5 & Latest">
+                                            <option value="gpt-4.5-preview">gpt-4.5-preview (Newest)</option>
+                                            <option value="gpt-4o-2024-11-20">gpt-4o-2024-11-20</option>
+                                            <option value="gpt-4o-2024-08-06">gpt-4o-2024-08-06</option>
+                                            <option value="gpt-4o-2024-05-13">gpt-4o-2024-05-13</option>
+                                            <option value="gpt-4o-mini-2024-07-18">gpt-4o-mini-2024-07-18</option>
+                                        </optgroup>
+                                        <optgroup label="GPT-4 Turbo">
+                                            <option value="gpt-4-turbo">gpt-4-turbo</option>
+                                            <option value="gpt-4-turbo-2024-04-09">gpt-4-turbo-2024-04-09</option>
+                                            <option value="gpt-4-turbo-preview">gpt-4-turbo-preview</option>
+                                        </optgroup>
+                                        <optgroup label="GPT-4">
+                                            <option value="gpt-4">gpt-4</option>
+                                            <option value="gpt-4-0613">gpt-4-0613</option>
+                                            <option value="gpt-4-32k">gpt-4-32k</option>
+                                        </optgroup>
+                                        <optgroup label="Reasoning (o1/o3)">
+                                            <option value="o1">o1</option>
+                                            <option value="o1-preview">o1-preview</option>
+                                            <option value="o1-mini">o1-mini</option>
+                                            <option value="o3-mini">o3-mini</option>
+                                        </optgroup>
+                                        <optgroup label="Legacy">
+                                            <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+                                            <option value="gpt-3.5-turbo-0125">gpt-3.5-turbo-0125</option>
+                                        </optgroup>
                                     </select>
                                 </div>
 

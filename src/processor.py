@@ -1,3 +1,4 @@
+import os
 import json
 from pathlib import Path
 from src.config import get_model
@@ -8,8 +9,13 @@ class ChatbotAssistant:
         self.system_prompt = self._load_system_prompt()
 
     def _load_system_prompt(self):
-        """Loads the system prompt (task) from the configuration file."""
+        """Loads the system prompt (task) from environment variable or config file."""
         default_prompt = "You are a helpful assistant."
+        
+        env_task = os.getenv("EVAL_TASK_DESCRIPTION")
+        if env_task:
+            return env_task
+        
         try:
             config_path = Path(__file__).parent.parent / "data" / "generation_config.json"
             if config_path.exists():
@@ -18,11 +24,11 @@ class ChatbotAssistant:
                     return config.get("task", default_prompt)
         except Exception:
             pass
+        
         return default_prompt
 
     def generate_response(self, input_text: str):
         try:
-            # Construct prompt with system instruction (persona)
             prompt = f"""System: {self.system_prompt}
 
 User: {input_text}"""

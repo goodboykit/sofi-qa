@@ -45,19 +45,15 @@ async def cleanup_stale_sessions():
     """Periodically remove session directories older than 24 hours."""
     while True:
         try:
-            # Run every hour
             await asyncio.sleep(3600)
             
             print("🧹 Running session cleanup...")
             now = time.time()
-            cutoff = now - (24 * 3600)  # 24 hours
+            cutoff = now - (24 * 3600)  
             
             if DATA_DIR.exists():
                 for item in DATA_DIR.iterdir():
-                    # Only delete session directories (uuid-ish or 'sess-' prefixed)
-                    # We preserve 'generated_data' or other static folders if they exist
                     if item.is_dir() and (item.name.startswith('sess-') or len(item.name) > 8):
-                        # Check modification time
                         mtime = item.stat().st_mtime
                         if mtime < cutoff:
                             print(f"   Deleting stale session: {item.name}")
@@ -67,18 +63,16 @@ async def cleanup_stale_sessions():
             break
         except Exception as e:
             print(f"❌ Error in session cleanup: {e}")
-            await asyncio.sleep(60)  # Retry after a minute on error
+            await asyncio.sleep(60)  
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Start GC task
     gc_task = asyncio.create_task(cleanup_stale_sessions())
     print("🚀 SoFi-QA API starting...")
     
     yield
     
-    # Cancel GC task
     gc_task.cancel()
     try:
         await gc_task
@@ -102,15 +96,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# NOTE: Static file serving for source docs is trickier with dynamic paths.
-# We will use the preview endpoint instead for everything.
-
-
 # ============ Helpers ============
 
 def get_session_dir(session_id: str) -> Path:
     if not session_id or len(session_id) < 8:
-        # Fallback or strict error? Let's be strict for isolation.
         raise HTTPException(status_code=400, detail="Invalid Session ID")
     
     session_path = DATA_DIR / session_id
@@ -279,7 +268,6 @@ async def preview_document(doc_id: str, x_session_id: str = Header(...)):
         raise HTTPException(status_code=404, detail="Document not found")
 
     try:
-        # Pass session path to generator
         generator = DatasetGenerator({}, base_dir=session_path)
         contexts = generator._get_document_contexts([str(found_path)])
         full_text = "\n\n".join(contexts)
@@ -299,7 +287,6 @@ def run_synthesis_job(job_id: str, doc_paths: List[str], syn_type: str, max_gold
         synthesis_jobs[job_id]["status"] = "running"
         synthesis_jobs[job_id]["message"] = f"Generating {syn_type}-turn Q&A..."
         
-        # Pass session_path as base_dir
         generator = DatasetGenerator(config, base_dir=session_path)
         goldens = generator.generate_single_turn(doc_paths) if syn_type == "single" else generator.generate_multi_turn(doc_paths)
         
@@ -362,6 +349,7 @@ def _build_env_vars(config: dict, single_path: Path, multi_path: Path) -> dict:
     
     if config:
         mappings = [
+            ("task", "EVAL_TASK_DESCRIPTION"),
             ("eval_metric_name", "EVAL_METRIC_NAME"),
             ("eval_metric_criteria", "EVAL_METRIC_CRITERIA"),
             ("eval_threshold", "EVAL_THRESHOLD"),
@@ -473,7 +461,6 @@ async def stream_evaluation(job_id: str):
         except:
             pass
         
-        # Attach failure reasons
         for t in tests:
             if t["status"] == "failed":
                 key = t["name"].split('[')[0] if '[' in t["name"] else t["name"]
