@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Icons } from '../components/common/Icons';
 import { useEvaluation } from '../hooks/useEvaluation';
 import { Modal } from '../components/common/Modal';
@@ -7,14 +7,22 @@ export function EvaluationPage() {
     const { running, result, message, logs, progress, start, stop } = useEvaluation();
     const [config, setConfig] = useState<any>({});
     const [selectedTest, setSelectedTest] = useState<any | null>(null);
+    const consoleRef = useRef<HTMLDivElement>(null);
 
-    // Load config from session storage or use defaults
+    // Load config from session storage
     useEffect(() => {
         const stored = sessionStorage.getItem('syn_config');
         if (stored) {
             setConfig(JSON.parse(stored));
         }
     }, []);
+
+    // Auto-scroll logs
+    useEffect(() => {
+        if (consoleRef.current) {
+            consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
+        }
+    }, [logs]);
 
     const handleRun = () => {
         const singleTurn = JSON.parse(sessionStorage.getItem('syn_single_turn') || '[]');
@@ -23,111 +31,118 @@ export function EvaluationPage() {
     };
 
     return (
-        <div className="page-container">
-            <PageHeader
-                icon={Icons.evaluation}
-                title="Evaluation"
-                description="Run quality tests on your synthetic data."
-            />
-
-            <div className="content-grid">
-                {/* Control Panel */}
-                <div className="card control-panel">
-                    <div className="panel-header">
-                        <h3>Configuration</h3>
-                        <span className={`status-badge ${running ? 'running' : 'idle'}`}>
-                            {running ? 'Running' : 'Ready'}
-                        </span>
-                    </div>
-
-                    <div className="panel-body">
-                        <p className="helper-text">
-                            Using generated golden data from the Synthesis phase.
-                        </p>
-
-                        <div className="action-row">
-                            <button
-                                className={`btn-primary ${running ? 'danger' : ''}`}
-                                onClick={running ? stop : handleRun}
-                            >
-                                {running ? (
-                                    <>
-                                        {Icons.close} Stop Evaluation
-                                    </>
-                                ) : (
-                                    <>
-                                        {Icons.play} Run Tests
-                                    </>
-                                )}
+        <main className="main">
+            {/* Hero Card - Matches Synthesis Page */}
+            <div className="hero-card">
+                <div className="hero-content">
+                    <h1 className="hero-title">Run <span>Quality Tests</span></h1>
+                    <p className="hero-desc">
+                        Evaluate your synthetic data using DeepEval metrics for accuracy and faithfulness.
+                    </p>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                        <button
+                            className="btn btn-primary"
+                            onClick={handleRun}
+                            disabled={running}
+                        >
+                            {running ? (
+                                <>
+                                    <span className="spinner" />
+                                    Evaluating
+                                </>
+                            ) : (
+                                <>
+                                    {Icons.play}
+                                    Run Tests
+                                </>
+                            )}
+                        </button>
+                        {running && (
+                            <button className="btn btn-stop" onClick={stop}>
+                                {Icons.stop}
+                                Stop
                             </button>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Main Content Area */}
-                <div className="card console-card">
-                    <div className="console-header">
-                        <h3>Test Results</h3>
-                    </div>
-
-                    <div className="console-output">
-                        {!running && !result && logs.length === 0 ? (
-                            <div className="empty-state">
-                                <div className="empty-icon">{Icons.beaker}</div>
-                                <h4>Ready to Evaluate</h4>
-                                <p>Click "Run Tests" to start variables.</p>
-                            </div>
-                        ) : (
-                            <div className="results-container">
-                                {logs.map((log, i) => (
-                                    <div key={i} className="log-line">{log}</div>
-                                ))}
-
-                                {result && (
-                                    <div className="summary-stats">
-                                        <div className="stat-box success">
-                                            <span className="stat-value">{result.passed}</span>
-                                            <span className="stat-label">Passed</span>
-                                        </div>
-                                        <div className="stat-box danger">
-                                            <span className="stat-value">{result.failed}</span>
-                                            <span className="stat-label">Failed</span>
-                                        </div>
-                                        <div className="stat-box">
-                                            <span className="stat-value">{result.total}</span>
-                                            <span className="stat-label">Total</span>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {result?.tests?.map((test: any, i: number) => (
-                                    <TestCard
-                                        key={i}
-                                        test={test}
-                                        onViewDetails={() => setSelectedTest(test)}
-                                    />
-                                ))}
-                            </div>
                         )}
                     </div>
+                </div>
+            </div>
 
-                    {/* Progress Bar Section */}
-                    {running && (
-                        <div className="progress-section">
-                            <div className="progress-row">
-                                <span className="progress-label">Progress</span>
-                                <span className="progress-value">{progress}%</span>
-                            </div>
-                            <div className="progress-track">
-                                <div
-                                    className="progress-fill"
-                                    style={{ width: `${progress}%` }}
-                                ></div>
-                            </div>
-                            <div className="progress-status">{message}</div>
+            {/* Results Summary - Only show when we have results */}
+            {result && (
+                <div className="results-section" style={{ marginBottom: '20px' }}>
+                    <div className="results-grid">
+                        <div className="result-item success">
+                            <span className="result-value">{result.passed}</span>
+                            <span className="result-label">Passed</span>
                         </div>
+                        <div className="result-item danger">
+                            <span className="result-value">{result.failed}</span>
+                            <span className="result-label">Failed</span>
+                        </div>
+                        <div className="result-item">
+                            <span className="result-value">{result.total}</span>
+                            <span className="result-label">Total</span>
+                        </div>
+                        <div className="result-item">
+                            <span className="result-value">
+                                {result.total > 0 ? Math.round((result.passed / result.total) * 100) : 0}%
+                            </span>
+                            <span className="result-label">Pass Rate</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Console Card - Matches Synthesis Page */}
+            <div className="console-card">
+                <div className="console-header">
+                    <span className="console-title">Test Results</span>
+                    <span className="console-meta">
+                        {result ? `${result.tests?.length || 0} tests` : `${logs.length} entries`}
+                    </span>
+                </div>
+
+                <div className="console-body" ref={consoleRef}>
+                    {!running && !result && logs.length === 0 ? (
+                        <div className="empty">
+                            <span className="empty-icon">{Icons.beaker}</span>
+                            <span className="empty-title">Ready to Evaluate</span>
+                            <span className="empty-desc">Click "Run Tests" to begin evaluation</span>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Logs during running */}
+                            {logs.map((log, i) => (
+                                <div key={i} className="log info">
+                                    <span className="log-icon">{Icons.arrow}</span>
+                                    <span className="log-text">{log}</span>
+                                </div>
+                            ))}
+
+                            {/* Test Results */}
+                            {result?.tests?.map((test: any, i: number) => (
+                                <TestCard
+                                    key={i}
+                                    test={test}
+                                    onViewDetails={() => setSelectedTest(test)}
+                                />
+                            ))}
+                        </>
                     )}
                 </div>
+
+                {/* Progress Bar */}
+                {running && progress > 0 && progress < 100 && (
+                    <div className="progress-section">
+                        <div className="progress-row">
+                            <span className="progress-label">Progress</span>
+                            <span className="progress-value">{progress}%</span>
+                        </div>
+                        <div className="progress-track">
+                            <div className="progress-bar" style={{ width: `${progress}%` }} />
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Test Details Modal */}
@@ -138,12 +153,10 @@ export function EvaluationPage() {
             >
                 {selectedTest && (
                     <div className="test-details-modal-content">
-                        {/* Status Badge in Modal */}
                         <div className={`modal-status-badge ${selectedTest.status === 'passed' ? 'success' : 'danger'}`}>
                             {selectedTest.status === 'passed' ? 'PASSED' : 'FAILED'}
                         </div>
 
-                        {/* Error Analysis - Only show if failed */}
                         {selectedTest.error && (
                             <div className="detail-section error-section">
                                 <h4>Failure Reason</h4>
@@ -152,12 +165,10 @@ export function EvaluationPage() {
                         )}
 
                         <div className="details-grid">
-                            {/* Input - Always show */}
                             {selectedTest.details?.input && (
                                 <DetailBlock label="Input" content={selectedTest.details.input} />
                             )}
 
-                            {/* Messages - For multi-turn */}
                             {selectedTest.details?.messages?.length > 0 && (
                                 <DetailBlock
                                     label="Conversation History"
@@ -165,7 +176,6 @@ export function EvaluationPage() {
                                 />
                             )}
 
-                            {/* Actual Output */}
                             {selectedTest.details?.actual && selectedTest.details.actual !== 'N/A' && (
                                 <DetailBlock
                                     label="Actual Output"
@@ -174,17 +184,10 @@ export function EvaluationPage() {
                                 />
                             )}
 
-                            {/* Expected Output */}
                             {selectedTest.details?.expected && selectedTest.details.expected !== 'N/A' && (
                                 <DetailBlock label="Expected Output" content={selectedTest.details.expected} />
                             )}
 
-                            {/* Expected Outcome - Fallback for multi-turn if mapped differently */}
-                            {selectedTest.details?.expected_outcome && selectedTest.details.expected_outcome !== 'N/A' && (
-                                <DetailBlock label="Expected Outcome" content={selectedTest.details.expected_outcome} />
-                            )}
-
-                            {/* Context */}
                             {selectedTest.details?.context?.length > 0 && (
                                 <DetailBlock
                                     label="Retrieval Context"
@@ -197,7 +200,7 @@ export function EvaluationPage() {
                     </div>
                 )}
             </Modal>
-        </div>
+        </main>
     );
 }
 
@@ -208,16 +211,13 @@ function TestCard({ test, onViewDetails }: { test: any, onViewDetails: () => voi
         <div className={`test-card ${isPassed ? 'passed' : 'failed'}`}>
             <div className="test-header">
                 <div className="test-status-icon">
-                    {isPassed ? Icons.check : Icons.close}
+                    {isPassed ? Icons.check : Icons.x}
                 </div>
                 <div className="test-info">
                     <span className="test-name">{test.name}</span>
                     <span className="test-duration">{test.duration || '0.5s'}</span>
                 </div>
-                <button
-                    className="btn-text"
-                    onClick={onViewDetails}
-                >
+                <button className="btn-text" onClick={onViewDetails}>
                     View Details
                 </button>
             </div>
@@ -236,17 +236,12 @@ function DetailBlock({ label, content, isError }: { label: string, content: stri
 }
 
 function FailureReasonParser({ error }: { error: string }) {
-    // Attempt to parse standard DeepEval assertion errors
-    // Format usually: "AssertionError: Metrics: <MetricName> (score: <val>, reason: <text>) failed."
-
     if (!error.includes('Metrics:')) {
         return <div className="raw-error">{error}</div>;
     }
 
     try {
         const parts = error.split('Metrics:')[1].split('failed.')[0];
-        // Example: "Faithfulness (score: 0.6, ... reason: ...)"
-
         const metricName = parts.split('(')[0].trim();
         const detailsStr = parts.substring(parts.indexOf('(') + 1, parts.lastIndexOf(')'));
 

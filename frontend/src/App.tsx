@@ -6,7 +6,6 @@ import './index.css';
 import { useSessionStorage } from './hooks/useSessionStorage';
 import { useDocuments } from './hooks/useDocuments';
 import { useSynthesis } from './hooks/useSynthesis';
-import { useEvaluation } from './hooks/useEvaluation';
 
 // Types
 import type { Config, Document } from './types';
@@ -76,15 +75,8 @@ function App() {
     stop: stopSynthesisHook
   } = useSynthesis({ onComplete: handleSynthesisComplete });
 
-  const {
-    running: evalRunning,
-    result: evalResult,
-    message: evalMessage,
-    logs: evalLogs,
-    progress: evalProgress,
-    start: startEvaluationHook,
-    stop: stopEvaluationHook
-  } = useEvaluation();
+  // useEvaluation is used internally by EvaluationPage, not needed here
+  // Keeping hook import for potential future use at App level
 
   // Derived Data
   const syntheticData = dataTab === 'single' ? singleTurnGoldens : multiTurnGoldens;
@@ -188,9 +180,7 @@ function App() {
     }
   };
 
-  // Action Wrappers
   const startSynthesis = () => startSynthesisHook(documents, config, status);
-  const startEvaluation = () => startEvaluationHook(singleTurnGoldens, multiTurnGoldens, config, status);
 
   return (
     <>
@@ -248,16 +238,7 @@ function App() {
             )}
 
             {currentPage === 'evaluation' && (
-              <EvaluationPage
-                status={status}
-                running={evalRunning}
-                result={evalResult}
-                message={evalMessage}
-                logs={evalLogs}
-                progress={evalProgress}
-                onStart={startEvaluation}
-                onStop={stopEvaluationHook}
-              />
+              <EvaluationPage />
             )}
           </div>
         </div>
