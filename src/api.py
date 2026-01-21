@@ -261,11 +261,19 @@ async def delete_document(doc_id: str, x_session_id: str = Header(...)):
     session_path = get_session_dir(x_session_id)
     docs_dir = session_path / "source_docs"
     
+    # 1. Try exact match (doc_id is full filename)
+    file_path = docs_dir / doc_id
+    if file_path.exists():
+        file_path.unlink()
+        return {"message": f"Document {doc_id} deleted"}
+
+    # 2. Fallback: try appending extensions (legacy behavior)
     for ext in [".pdf", ".docx", ".xlsx", ".csv", ".txt", ".PDF", ".DOCX", ".XLSX", ".CSV", ".TXT"]:
         file_path = docs_dir / f"{doc_id}{ext}"
         if file_path.exists():
             file_path.unlink()
             return {"message": f"Document {doc_id} deleted"}
+            
     raise HTTPException(status_code=404, detail="Document not found")
 
 
