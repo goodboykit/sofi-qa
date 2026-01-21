@@ -11,6 +11,7 @@ interface EvaluationPageProps {
     result: EvalResult | null;
     message: string;
     logs: string[];
+    progress?: number;
     onStart: () => void;
     onStop: () => void;
 }
@@ -21,6 +22,7 @@ export function EvaluationPage({
     result,
     message,
     logs,
+    progress = 0,
     onStart,
     onStop
 }: EvaluationPageProps) {
@@ -100,6 +102,18 @@ export function EvaluationPage({
                             </div>
                         )}
                     </div>
+
+                    {running && (
+                        <div className="progress-section">
+                            <div className="progress-row">
+                                <span className="progress-label">Progress</span>
+                                <span className="progress-value">{progress}%</span>
+                            </div>
+                            <div className="progress-track">
+                                <div className="progress-bar" style={{ width: `${progress}%` }} />
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 

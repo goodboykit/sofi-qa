@@ -430,7 +430,7 @@ async def stream_evaluation(job_id: str):
         
         tests, failure_map = [], {}
         in_failures, current_fail = False, None
-        metrics, details = [], None
+        metrics, details, current_test_name = [], None, None
         
         for line in iter(process.stdout.readline, ''):
             if not line:
@@ -449,19 +449,24 @@ async def stream_evaluation(job_id: str):
                 except:
                     pass
             
-            # Parse test results
-            if '::test_' in line_str and not in_failures:
+            # Parse test results robustly
+            if '::test_' in line_str:
                 match = re.search(r'::(test_\w+(?:\[.*?\])?)', line_str)
-                name = match.group(1) if match else line_str.split('::')[-1].split()[0]
+                if match:
+                    current_test_name = match.group(1)
+            
+            # Check for status on the line (could be same line or subsequent)
+            if current_test_name and not in_failures:
                 metric_str = "\n".join(metrics[-5:]) if metrics else "Passed"
                 
                 if 'PASSED' in line_str:
-                    tests.append({"name": name, "status": "passed", "metrics": metric_str, "details": details})
-                    yield {"event": "test", "data": json.dumps({"name": name, "status": "passed", "metrics": metric_str})}
+                    tests.append({"name": current_test_name, "status": "passed", "metrics": metric_str, "details": details})
+                    yield {"event": "test", "data": json.dumps({"name": current_test_name, "status": "passed", "metrics": metric_str})}
+                    metrics, details, current_test_name = [], None, None
                 elif 'FAILED' in line_str:
-                    tests.append({"name": name, "status": "failed", "details": details})
-                    yield {"event": "test", "data": json.dumps({"name": name, "status": "failed"})}
-                metrics, details = [], None
+                    tests.append({"name": current_test_name, "status": "failed", "details": details})
+                    yield {"event": "test", "data": json.dumps({"name": current_test_name, "status": "failed"})}
+                    metrics, details, current_test_name = [], None, None
             
             # Parse failures section
             if "==== FAILURES ====" in line_str:
