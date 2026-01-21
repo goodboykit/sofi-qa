@@ -4,7 +4,7 @@ import { useEvaluation } from '../hooks/useEvaluation';
 import { Modal } from '../components/common/Modal';
 
 export function EvaluationPage() {
-    const { running, result, message, logs, progress, start, stop } = useEvaluation();
+    const { running, result, logs, progress, start, stop } = useEvaluation();
     const [config, setConfig] = useState<any>({});
     const [selectedTest, setSelectedTest] = useState<any | null>(null);
     const consoleRef = useRef<HTMLDivElement>(null);
@@ -30,80 +30,105 @@ export function EvaluationPage() {
         start(singleTurn, multiTurn, config, 'online');
     };
 
+    // Extract metrics from result (handle both formats: direct or nested under 'metrics')
+    const metrics = result?.metrics || result || { passed: 0, failed: 0, total: 0 };
+    const passed = metrics.passed ?? 0;
+    const failed = metrics.failed ?? 0;
+    const total = metrics.total ?? 0;
+    const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
+    const tests = result?.tests || [];
+
+    // Determine if we have results to show
+    const hasResults = result && tests.length > 0;
+
     return (
         <main className="main">
-            {/* Hero Card - Matches Synthesis Page */}
-            <div className="hero-card">
-                <div className="hero-content">
-                    <h1 className="hero-title">Run <span>Quality Tests</span></h1>
-                    <p className="hero-desc">
-                        Evaluate your synthetic data using DeepEval metrics for accuracy and faithfulness.
-                    </p>
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                        <button
-                            className="btn btn-primary"
-                            onClick={handleRun}
-                            disabled={running}
-                        >
-                            {running ? (
-                                <>
-                                    <span className="spinner" />
-                                    Evaluating
-                                </>
-                            ) : (
-                                <>
-                                    {Icons.play}
-                                    Run Tests
-                                </>
-                            )}
-                        </button>
-                        {running && (
+            {/* Hero Card - Hide when we have results */}
+            {!hasResults && !running && (
+                <div className="hero-card">
+                    <div className="hero-content">
+                        <h1 className="hero-title">Run <span>Quality Tests</span></h1>
+                        <p className="hero-desc">
+                            Evaluate your synthetic data using DeepEval metrics for accuracy and faithfulness.
+                        </p>
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                            <button
+                                className="btn btn-primary"
+                                onClick={handleRun}
+                                disabled={running}
+                            >
+                                {Icons.play}
+                                Run Tests
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Running State */}
+            {running && (
+                <div className="hero-card">
+                    <div className="hero-content">
+                        <h1 className="hero-title">Running <span>Quality Tests</span></h1>
+                        <p className="hero-desc">
+                            Evaluating your synthetic data... Please wait.
+                        </p>
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                            <button className="btn btn-primary" disabled>
+                                <span className="spinner" />
+                                Evaluating
+                            </button>
                             <button className="btn btn-stop" onClick={stop}>
                                 {Icons.stop}
                                 Stop
                             </button>
-                        )}
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             {/* Results Summary - Only show when we have results */}
-            {result && (
+            {hasResults && (
                 <div className="results-section" style={{ marginBottom: '20px' }}>
+                    <div className="results-header">
+                        <h2>Evaluation Summary</h2>
+                        <button className="btn btn-primary" onClick={handleRun} disabled={running}>
+                            {Icons.play}
+                            Run New Evaluation
+                        </button>
+                    </div>
                     <div className="results-grid">
                         <div className="result-item success">
-                            <span className="result-value">{result.passed}</span>
+                            <span className="result-value">{passed}</span>
                             <span className="result-label">Passed</span>
                         </div>
                         <div className="result-item danger">
-                            <span className="result-value">{result.failed}</span>
+                            <span className="result-value">{failed}</span>
                             <span className="result-label">Failed</span>
                         </div>
                         <div className="result-item">
-                            <span className="result-value">{result.total}</span>
+                            <span className="result-value">{total}</span>
                             <span className="result-label">Total</span>
                         </div>
                         <div className="result-item">
-                            <span className="result-value">
-                                {result.total > 0 ? Math.round((result.passed / result.total) * 100) : 0}%
-                            </span>
+                            <span className="result-value">{passRate}%</span>
                             <span className="result-label">Pass Rate</span>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Console Card - Matches Synthesis Page */}
+            {/* Console Card - Test Results */}
             <div className="console-card">
                 <div className="console-header">
                     <span className="console-title">Test Results</span>
                     <span className="console-meta">
-                        {result ? `${result.tests?.length || 0} tests` : `${logs.length} entries`}
+                        {hasResults ? `${tests.length} tests` : `${logs.length} entries`}
                     </span>
                 </div>
 
                 <div className="console-body" ref={consoleRef}>
-                    {!running && !result && logs.length === 0 ? (
+                    {!running && !hasResults && logs.length === 0 ? (
                         <div className="empty">
                             <span className="empty-icon">{Icons.beaker}</span>
                             <span className="empty-title">Ready to Evaluate</span>
@@ -112,7 +137,7 @@ export function EvaluationPage() {
                     ) : (
                         <>
                             {/* Logs during running */}
-                            {logs.map((log, i) => (
+                            {running && logs.map((log, i) => (
                                 <div key={i} className="log info">
                                     <span className="log-icon">{Icons.arrow}</span>
                                     <span className="log-text">{log}</span>
@@ -120,7 +145,7 @@ export function EvaluationPage() {
                             ))}
 
                             {/* Test Results */}
-                            {result?.tests?.map((test: any, i: number) => (
+                            {tests.map((test: any, i: number) => (
                                 <TestCard
                                     key={i}
                                     test={test}
@@ -157,10 +182,10 @@ export function EvaluationPage() {
                             {selectedTest.status === 'passed' ? 'PASSED' : 'FAILED'}
                         </div>
 
-                        {selectedTest.error && (
+                        {selectedTest.reason && (
                             <div className="detail-section error-section">
                                 <h4>Failure Reason</h4>
-                                <FailureReasonParser error={selectedTest.error} />
+                                <FailureReasonParser error={selectedTest.reason} />
                             </div>
                         )}
 
@@ -184,7 +209,7 @@ export function EvaluationPage() {
                                 />
                             )}
 
-                            {selectedTest.details?.expected && selectedTest.details.expected !== 'N/A' && (
+                            {selectedTest.details?.expected && selectedTest.details.expected !== 'N/A' && selectedTest.details.expected !== null && (
                                 <DetailBlock label="Expected Output" content={selectedTest.details.expected} />
                             )}
 
