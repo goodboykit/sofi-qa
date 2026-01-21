@@ -54,11 +54,12 @@ function App() {
   const [singleTurnGoldens, setSingleTurnGoldens] = useSessionStorage<any[]>('goldens_single', []);
   const [multiTurnGoldens, setMultiTurnGoldens] = useSessionStorage<any[]>('goldens_multi', []);
 
-  // UI State
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [uploading, setUploading] = useState(false);
   const [dataTab, setDataTab] = useState<'single' | 'multi'>('single');
   const [successModalOpen, setSuccessModalOpen] = useState(false);
+  const [uploadSuccessModal, setUploadSuccessModal] = useState<{ open: boolean, filename: string }>({ open: false, filename: '' });
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState<{ open: boolean, docId: string, docName: string }>({ open: false, docId: '', docName: '' });
 
   // Derived
   const syntheticData = dataTab === 'single' ? singleTurnGoldens : multiTurnGoldens;
@@ -188,6 +189,7 @@ function App() {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       await fetchDocuments();
+      setUploadSuccessModal({ open: true, filename: file.name });
     } catch (err) {
       console.error('Upload failed:', err);
       alert('Upload failed. Please try again.');
@@ -196,15 +198,21 @@ function App() {
     }
   };
 
-  const deleteDocument = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this document?")) return;
+  const confirmDelete = (doc: Document) => {
+    setDeleteConfirmModal({ open: true, docId: doc.id, docName: doc.name });
+  };
+
+  const deleteDocument = async () => {
+    if (!deleteConfirmModal.docId) return;
     try {
-      await axios.delete(`/api/documents/${id}`);
+      await axios.delete(`/api/documents/${deleteConfirmModal.docId}`);
       await fetchDocuments();
     } catch {
       alert('Failed to delete');
+    } finally {
+      setDeleteConfirmModal({ open: false, docId: '', docName: '' });
     }
-  }
+  };
 
   // Synthesis Handler
   const handleSynthesisComplete = (single: any[], multi: any[]) => {
@@ -249,7 +257,7 @@ function App() {
                 documents={documents}
                 uploading={uploading}
                 onUpload={uploadFile}
-                confirmDelete={deleteDocument} // Mapping both for compatibility
+                confirmDelete={confirmDelete}
               />
             )}
 
@@ -294,6 +302,62 @@ function App() {
           <p>Configuration has been saved successfully.</p>
           <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
             Your settings have been written to disk and will persist across restarts.
+          </p>
+        </div>
+      </Modal>
+      <Modal
+        isOpen={uploadSuccessModal.open}
+        onClose={() => setUploadSuccessModal({ open: false, filename: '' })}
+        title="Upload Successful"
+        footer={
+          <button className="btn-secondary" onClick={() => setUploadSuccessModal({ open: false, filename: '' })}>
+            Close
+          </button>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', textAlign: 'center' }}>
+          <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(74, 222, 128, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '8px' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
+          <p style={{ fontWeight: 500 }}>Document uploaded successfully!</p>
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', wordBreak: 'break-all' }}>
+            <strong>{uploadSuccessModal.filename}</strong>
+          </p>
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            Your document is ready for synthesis.
+          </p>
+        </div>
+      </Modal>
+      <Modal
+        isOpen={deleteConfirmModal.open}
+        onClose={() => setDeleteConfirmModal({ open: false, docId: '', docName: '' })}
+        title="Delete Document"
+        footer={
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <button className="btn-secondary" onClick={() => setDeleteConfirmModal({ open: false, docId: '', docName: '' })}>
+              Cancel
+            </button>
+            <button className="btn btn-danger" onClick={deleteDocument} style={{ background: '#ef4444', borderColor: '#ef4444' }}>
+              Delete
+            </button>
+          </div>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', textAlign: 'center' }}>
+          <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </div>
+          <p style={{ fontWeight: 500 }}>Are you sure you want to delete this document?</p>
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', wordBreak: 'break-all' }}>
+            <strong>{deleteConfirmModal.docName}</strong>
+          </p>
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            This action cannot be undone.
           </p>
         </div>
       </Modal>

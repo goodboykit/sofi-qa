@@ -7,7 +7,7 @@ interface DocumentsPageProps {
     documents: Document[];
     uploading: boolean;
     onUpload: (files: FileList) => void;
-    confirmDelete: (id: string) => void;
+    confirmDelete: (doc: Document) => void;
 }
 
 export function DocumentsPage({ documents, uploading, onUpload, confirmDelete }: DocumentsPageProps) {
@@ -122,7 +122,7 @@ export function DocumentsPage({ documents, uploading, onUpload, confirmDelete }:
                                     </div>
                                     <button
                                         className="document-delete"
-                                        onClick={(e) => { e.stopPropagation(); confirmDelete(doc.id); }}
+                                        onClick={(e) => { e.stopPropagation(); confirmDelete(doc); }}
                                         title="Delete"
                                     >
                                         {Icons.trash}

@@ -434,7 +434,8 @@ input[type="range"]::-moz-range-thumb {
 
 .btn-secondary:hover {
   background: var(--bg-card-hover);
-  border-color: var(--text-muted);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .btn-danger {
@@ -2394,4 +2395,26 @@ select.form-input {
 
 select.form-input:focus {
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300c9a7' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+}
+
+/* Dark theme for dropdown options */
+select.form-input option {
+  background-color: #1a1a1a;
+  color: #e0e0e0;
+  padding: 10px 14px;
+}
+
+select.form-input option:hover,
+select.form-input option:focus,
+select.form-input option:checked {
+  background-color: #00c9a7;
+  color: #0a0a0a;
+}
+
+select.form-input optgroup {
+  background-color: #0f0f0f;
+  color: #888;
+  font-weight: 600;
+  font-style: normal;
+  padding: 8px 0;
 }
