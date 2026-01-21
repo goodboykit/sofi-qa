@@ -189,37 +189,68 @@ export function EvaluationPage() {
                             </div>
                         )}
 
-                        <div className="details-grid">
+                        <div className="data-display-stack">
                             {selectedTest.details?.input && (
-                                <DetailBlock label="Input" content={selectedTest.details.input} />
+                                <div className="data-box input">
+                                    <span className="data-box-label">Input</span>
+                                    {selectedTest.details.input}
+                                </div>
                             )}
 
                             {selectedTest.details?.messages?.length > 0 && (
-                                <DetailBlock
-                                    label="Conversation History"
-                                    content={selectedTest.details.messages.join('\n\n')}
-                                />
+                                <div className="data-box">
+                                    <span className="data-box-label">Conversation History</span>
+                                    <div className="chat-container context-mode">
+                                        {selectedTest.details.messages.map((msg: string, idx: number) => (
+                                            <div key={idx} className={`chat-bubble ${idx % 2 === 0 ? 'user' : 'bot'}`}>
+                                                {msg}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             )}
 
                             {selectedTest.details?.actual && selectedTest.details.actual !== 'N/A' && (
-                                <DetailBlock
-                                    label="Actual Output"
-                                    content={selectedTest.details.actual}
-                                    isError={selectedTest.status === 'failed'}
-                                />
+                                <div className={`data-box ${selectedTest.status === 'failed' ? 'error' : 'output'}`}>
+                                    <span className="data-box-label">Actual Output</span>
+                                    {selectedTest.details.actual}
+                                </div>
                             )}
 
                             {selectedTest.details?.expected && selectedTest.details.expected !== 'N/A' && selectedTest.details.expected !== null && (
-                                <DetailBlock label="Expected Output" content={selectedTest.details.expected} />
+                                <div className="data-box output">
+                                    <span className="data-box-label">Expected Output</span>
+                                    {selectedTest.details.expected}
+                                </div>
+                            )}
+
+                            {selectedTest.details?.expected_outcome && selectedTest.details.expected_outcome !== 'N/A' && selectedTest.details.expected_outcome !== null && (
+                                <div className="data-box output">
+                                    <span className="data-box-label">Expected Outcome</span>
+                                    {selectedTest.details.expected_outcome}
+                                </div>
                             )}
 
                             {selectedTest.details?.context?.length > 0 && (
-                                <DetailBlock
-                                    label="Retrieval Context"
-                                    content={Array.isArray(selectedTest.details.context)
-                                        ? selectedTest.details.context.join('\n---\n')
-                                        : selectedTest.details.context}
-                                />
+                                <div className="data-context-toggle">
+                                    <details open>
+                                        <summary>View Retrieval Context</summary>
+                                        <div className="context-list">
+                                            {Array.isArray(selectedTest.details.context)
+                                                ? selectedTest.details.context.map((c: string, cIdx: number) => (
+                                                    <div key={cIdx} className="context-item chat-mode">
+                                                        <div className="chat-container context-mode">
+                                                            <div className="chat-bubble bot context-bubble">
+                                                                {c}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                                : <div className="chat-bubble bot">{selectedTest.details.context}</div>
+                                            }
+                                        </div>
+                                    </details>
+                                </div>
                             )}
                         </div>
                     </div>
@@ -250,31 +281,35 @@ function TestCard({ test, onViewDetails }: { test: any, onViewDetails: () => voi
     );
 }
 
-function DetailBlock({ label, content, isError }: { label: string, content: string, isError?: boolean }) {
-    if (!content) return null;
-    return (
-        <div className={`detail-block ${isError ? 'error-block' : ''}`}>
-            <h5>{label}</h5>
-            <pre>{content}</pre>
-        </div>
-    );
-}
+
 
 function FailureReasonParser({ error }: { error: string }) {
-    if (!error.includes('Metrics:')) {
+    // Handle the full AssertionError format from DeepEval
+    const errorStr = error.replace('AssertionError:', '').trim();
+
+    if (!errorStr.includes('Metrics:')) {
         return <div className="raw-error">{error}</div>;
     }
 
     try {
-        const parts = error.split('Metrics:')[1].split('failed.')[0];
-        const metricName = parts.split('(')[0].trim();
-        const detailsStr = parts.substring(parts.indexOf('(') + 1, parts.lastIndexOf(')'));
+        // Parse: "Metrics: Faithfulness (score: 0.67, threshold: 0.7, strict: False, error: None, reason: The score is...) failed."
+        const metricsSection = errorStr.split('Metrics:')[1];
+        const metricName = metricsSection.split('(')[0].trim();
 
-        const scoreMatch = detailsStr.match(/score:\s*([\d.]+)/);
-        const reasonMatch = detailsStr.match(/reason:\s*(.+)/);
+        // Extract the content inside parentheses
+        const parensContent = metricsSection.substring(
+            metricsSection.indexOf('(') + 1,
+            metricsSection.lastIndexOf(')')
+        );
+
+        // Parse individual fields
+        const scoreMatch = parensContent.match(/score:\s*([\d.]+)/);
+        const thresholdMatch = parensContent.match(/threshold:\s*([\d.]+)/);
+        const reasonMatch = parensContent.match(/reason:\s*(.+)/);
 
         const score = scoreMatch ? parseFloat(scoreMatch[1]).toFixed(2) : '?';
-        const reason = reasonMatch ? reasonMatch[1] : detailsStr;
+        const threshold = thresholdMatch ? parseFloat(thresholdMatch[1]).toFixed(2) : '0.70';
+        const reason = reasonMatch ? reasonMatch[1].replace(/\)$/, '').trim() : 'No reason provided';
 
         return (
             <div className="structured-error">
@@ -284,9 +319,10 @@ function FailureReasonParser({ error }: { error: string }) {
                 </div>
                 <div className="error-score">
                     <span className="label">Score:</span>
-                    <span className={`value ${parseFloat(score) < 0.7 ? 'danger' : 'warning'}`}>
+                    <span className={`value ${parseFloat(score) < parseFloat(threshold) ? 'danger' : 'success'}`}>
                         {score}
                     </span>
+                    <span className="threshold">/ {threshold} threshold</span>
                 </div>
                 <div className="error-reason">
                     <span className="label">Reasoning:</span>
