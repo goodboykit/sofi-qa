@@ -419,16 +419,13 @@ async def get_latest_evaluation(x_session_id: str = Header(None)):
     if not results_dir.exists():
         return None
         
-    # Find all evaluation result files
-    files = list(results_dir.glob("evaluation_results_*.json"))
-    if not files:
+    results_file = results_dir / "evaluation_results.json"
+    
+    if not results_file.exists():
         return None
         
-    # Sort by modification time (newest first)
-    latest_file = max(files, key=os.path.getmtime)
-    
     try:
-        content = json.loads(latest_file.read_text(encoding='utf-8'))
+        content = json.loads(results_file.read_text(encoding='utf-8'))
         return content
     except Exception as e:
         print(f"Error reading evaluation file: {e}")
@@ -529,16 +526,15 @@ async def stream_evaluation(job_id: str, x_session_id: Optional[str] = Header(No
         passed = sum(1 for t in tests if t["status"] == "passed")
         failed = len(tests) - passed
         
-        # Save results to session storage
+        # Save results to session storage (Overwrite mode)
         try:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             results_dir = session_path / "synthetic_data"
             results_dir.mkdir(parents=True, exist_ok=True)
-            results_file = results_dir / f"evaluation_results_{timestamp}.json"
+            results_file = results_dir / "evaluation_results.json"
             
             with open(results_file, 'w', encoding='utf-8') as f:
                 json.dump({
-                    "timestamp": timestamp,
+                    "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),  # timestamp inside content only
                     "metrics": {
                         "passed": passed,
                         "failed": failed,
@@ -546,6 +542,8 @@ async def stream_evaluation(job_id: str, x_session_id: Optional[str] = Header(No
                     },
                     "tests": tests
                 }, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            print(f"Failed to save evaluation results: {e}")
         except Exception as e:
             print(f"Failed to save evaluation results: {e}")
 
