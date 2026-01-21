@@ -238,15 +238,9 @@ export function EvaluationPage() {
                                         <div className="context-list">
                                             {Array.isArray(selectedTest.details.context)
                                                 ? selectedTest.details.context.map((c: string, cIdx: number) => (
-                                                    <div key={cIdx} className="context-item chat-mode">
-                                                        <div className="chat-container context-mode">
-                                                            <div className="chat-bubble bot context-bubble">
-                                                                {c}
-                                                            </div>
-                                                        </div>
-                                                    </div>
+                                                    <ContextParser key={cIdx} text={c} />
                                                 ))
-                                                : <div className="chat-bubble bot">{selectedTest.details.context}</div>
+                                                : <ContextParser text={selectedTest.details.context} />
                                             }
                                         </div>
                                     </details>
@@ -281,6 +275,70 @@ function TestCard({ test, onViewDetails }: { test: any, onViewDetails: () => voi
     );
 }
 
+// Parse retrieval context into Q&A segments with chat bubbles
+function ContextParser({ text }: { text: string }) {
+    // Split text into segments based on question marks and newlines
+    const splitIntoQA = (inputText: string): string[] => {
+        const parts: string[] = [];
+        if (inputText.includes('?')) {
+            const qSplit = inputText.split(/(\?)/);
+            let current = '';
+            for (let i = 0; i < qSplit.length; i++) {
+                if (qSplit[i] === '?') {
+                    current += '?';
+                    if (current.trim()) parts.push(current.trim());
+                    current = '';
+                } else {
+                    current += qSplit[i];
+                }
+            }
+            if (current.trim()) parts.push(current.trim());
+        } else {
+            const answerStarters = /([a-z,!.])(?=(Currently|Unfortunately|Actually|However|Yes|No|Oh|We |Our |The |It |I |Thank|Please|Sure|Absolutely|Of course|Certainly|So |Basically|Well |Right now|At the moment|Hindi|Oo|Wala|Meron|Mayroon|Opo|Sa |Ang |Yung |Kasi|Marami|Salamat|Pasensya|Libre|Kapag|Nag|May |Pwede |Puwede |Maaari |Kami |Tayo |Sila |Ito |Iyan |Iyon |Para |Dahil|Siguro|Depende|Sorry|Okay|Ok ))/g;
+            const splitText = inputText.replace(answerStarters, '$1|||SPLIT|||');
+            const rawParts = splitText.split('|||SPLIT|||');
+            rawParts.forEach(p => {
+                if (p.trim()) parts.push(p.trim());
+            });
+        }
+        return parts.length > 0 ? parts : [inputText];
+    };
+
+    // Question starters to detect user messages
+    const questionStarters = [
+        'what', 'when', 'where', 'who', 'why', 'how', 'which',
+        'is there', 'are there', 'is it', 'is the', 'are you', 'are we',
+        'do you', 'do we', 'do they', 'does', 'did',
+        'can i', 'can we', 'can you', 'could', 'would', 'will', 'shall',
+        'have you', 'has', 'had',
+        'ano', 'saan', 'nasaan', 'kailan', 'kelan', 'sino', 'bakit', 'paano', 'magkano', 'ilan', 'gaano',
+        'pwede ba', 'puwede ba', 'pwede', 'puwede', 'maaari ba', 'maaari',
+        'meron ba', 'mayroon ba', 'may ba', 'wala ba',
+        'libre ba', 'open ba', 'available ba', 'bukas ba', 'sarado ba',
+        'totoo ba', 'talaga ba', 'ganoon ba', 'ganon ba', 'diba',
+        'kailangan ba', 'kelangan ba', 'need ba',
+        'ok lang ba', 'okay lang ba', 'allowed ba', 'accept ba', 'valid ba', 'included ba'
+    ];
+
+    const isQuestion = (line: string): boolean => {
+        const t = line.trim().toLowerCase();
+        return t.endsWith('?') || questionStarters.some(w => t.startsWith(w + ' ') || t.startsWith(w + '?') || t === w);
+    };
+
+    const segments = splitIntoQA(text).flatMap(seg => seg.split('\n').filter(line => line.trim() !== ''));
+
+    return (
+        <div className="context-item chat-mode">
+            <div className="chat-container context-mode">
+                {segments.map((line, idx) => (
+                    <div key={idx} className={`chat-bubble ${isQuestion(line) ? 'user' : 'bot'} context-bubble`}>
+                        {line}
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
 
 
 function FailureReasonParser({ error }: { error: string }) {
