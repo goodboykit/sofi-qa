@@ -7,6 +7,7 @@ export function useEvaluation() {
     const [result, setResult] = useState<any | null>(null);
     const [message, setMessage] = useState('');
     const [logs, setLogs] = useState<string[]>([]);
+    const [progress, setProgress] = useState(0);
     const eventSourceRef = useRef<EventSource | null>(null);
 
     const start = async (singleTurn: any[], multiTurn: any[], config: Config, status: string) => {
@@ -17,7 +18,11 @@ export function useEvaluation() {
         setRunning(true);
         setResult(null);
         setLogs([]);
+        setProgress(0);
         setMessage('Initializing test run...');
+
+        const totalTests = singleTurn.length + multiTurn.length;
+        let completedTests = 0;
 
         try {
             const startRes = await axios.post('/api/evaluation/start', {
@@ -39,13 +44,24 @@ export function useEvaluation() {
 
             eventSource.addEventListener('test', (e) => {
                 const test = JSON.parse(e.data);
+                completedTests++;
+                if (totalTests > 0) {
+                    setProgress(Math.round((completedTests / totalTests) * 100));
+                }
                 setLogs(prev => [...prev, `${test.status === 'passed' ? '✓' : '✗'} ${test.name}`]);
+            });
+
+            eventSource.addEventListener('progress', (e) => {
+                // Fallback if backend sends progress later
+                const p = parseInt(e.data);
+                if (!isNaN(p)) setProgress(p);
             });
 
             eventSource.addEventListener('complete', (e) => {
                 const res = JSON.parse(e.data);
                 setResult(res);
                 setMessage(`Completed: ${res.passed} passed, ${res.failed} failed`);
+                setProgress(100);
                 setRunning(false);
                 eventSourceRef.current = null;
                 eventSource.close();
@@ -93,6 +109,7 @@ export function useEvaluation() {
         result,
         message,
         logs,
+        progress,
         start,
         stop
     };

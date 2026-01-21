@@ -32,10 +32,10 @@ export function DataPage({ syntheticData, dataTab, setDataTab }: DataPageProps) 
             <div className="data-list-container" style={{ flex: 1, overflowY: 'auto', padding: '0 24px 24px 24px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {syntheticData.length === 0 ? (
-                        <div className="empty" style={{ marginTop: '40px' }}>
-                            <span className="empty-icon">{Icons.database}</span>
-                            <span className="empty-title">No data generated yet</span>
-                            <span className="empty-desc">Run synthesis to generate QA pairs</span>
+                        <div className="empty" style={{ marginTop: '60px', display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: 0.7 }}>
+                            <span className="empty-icon" style={{ fontSize: '64px', marginBottom: '16px', color: 'var(--text-muted)' }}>{Icons.database}</span>
+                            <span className="empty-title" style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>No data generated yet</span>
+                            <span className="empty-desc" style={{ fontSize: '15px', color: 'var(--text-secondary)' }}>Run synthesis to generate QA pairs</span>
                         </div>
                     ) : (
                         syntheticData.map((item, idx) => (
@@ -48,22 +48,22 @@ export function DataPage({ syntheticData, dataTab, setDataTab }: DataPageProps) 
                                         <div className="data-display-stack">
                                             <div className="data-box input">
                                                 <span className="data-box-label">Input</span>
-                                                {item.input || item.scenario}
+                                                {item.input || item.scenario || item.user_input}
                                             </div>
                                             <div className="data-box output">
                                                 <span className="data-box-label">Expected Output</span>
-                                                {item.expected_output || item.expected_outcome}
+                                                {item.expected_output || item.expectedOutput || item.expected_outcome || item.expectedOutcome || '(No expected output found)'}
                                             </div>
                                         </div>
                                     ) : (
                                         <div className="data-display-stack">
                                             <div className="data-box input">
                                                 <span className="data-box-label">Scenario</span>
-                                                {item.scenario || item.input}
+                                                {item.scenario || item.input || item.user_input}
                                             </div>
                                             <div className="data-box output">
                                                 <span className="data-box-label">Expected Outcome</span>
-                                                {item.expected_outcome || item.expected_output}
+                                                {item.expected_outcome || item.expectedOutcome || item.expected_output || item.expectedOutput || '(No expected outcome found)'}
                                             </div>
                                         </div>
                                     )}

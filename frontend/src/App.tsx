@@ -81,6 +81,7 @@ function App() {
     result: evalResult,
     message: evalMessage,
     logs: evalLogs,
+    progress: evalProgress,
     start: startEvaluationHook,
     stop: stopEvaluationHook
   } = useEvaluation();
@@ -88,28 +89,10 @@ function App() {
   // Derived Data
   const syntheticData = dataTab === 'single' ? singleTurnGoldens : multiTurnGoldens;
 
-  // Initialization & Heartbeat
+  // Loading Simulation
   useEffect(() => {
-    // Session ID
-    let sessionId = sessionStorage.getItem('sofi_session_id');
-    if (!sessionId) {
-      sessionId = 'sess-' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-      sessionStorage.setItem('sofi_session_id', sessionId);
-    }
-
-    // Axios Interceptor
-    axios.interceptors.request.clear();
-    axios.interceptors.request.use(config => {
-      config.headers['x-session-id'] = sessionId;
-      return config;
-    });
-
-    // Loading Simulation
     const timer = setTimeout(() => setLoading(false), 2300);
-
-    return () => {
-      clearTimeout(timer);
-    };
+    return () => clearTimeout(timer);
   }, []);
 
   // Health Check
@@ -271,6 +254,7 @@ function App() {
                 result={evalResult}
                 message={evalMessage}
                 logs={evalLogs}
+                progress={evalProgress}
                 onStart={startEvaluation}
                 onStop={stopEvaluationHook}
               />
