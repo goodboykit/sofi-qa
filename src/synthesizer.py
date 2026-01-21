@@ -142,57 +142,103 @@ class DatasetGenerator:
 
     def generate_single_turn(self, paths: List[str]):
         self.synthesizer.synthetic_goldens = []
+        all_goldens = []
         
-        contexts = self._get_document_contexts(paths)
-        if not contexts:
-            raise ValueError("No readable text found in documents. Please check file contents.")
+        for path in paths:
+            file_name = Path(path).name
+            contexts = self._get_document_contexts([path])
+            
+            if not contexts:
+                continue
 
-        # Contexts must be List[List[str]]
-        formatted_contexts = [[c] for c in contexts]
+            # Contexts must be List[List[str]]
+            formatted_contexts = [[c] for c in contexts]
 
-        self.synthesizer.generate_goldens_from_contexts(
-            contexts=formatted_contexts,
-            max_goldens_per_context=self.num_goldens,
-            include_expected_output=True
-        )
-        
-        if not self.synthesizer.synthetic_goldens:
+            # Generate for this specific file
+            try:
+                # We use a temporary list to capture just this batch
+                batch_goldens = self.synthesizer.generate_goldens_from_contexts(
+                    contexts=formatted_contexts,
+                    max_goldens_per_context=self.num_goldens,
+                    include_expected_output=True,
+                    _show_indicator=False # minor optimization if available, else ignored
+                )
+                
+                # Manually inject source file
+                for golden in batch_goldens:
+                    golden.source_file = file_name
+                    
+                all_goldens.extend(batch_goldens)
+                
+            except Exception as e:
+                print(f"Error generating for {file_name}: {e}")
+
+        if not all_goldens:
             raise ValueError("No goldens were generated. Please check your documents.")
         
+        # Update the synthesizer's list so save_as works correctly
+        self.synthesizer.synthetic_goldens = all_goldens
         self.synthesizer.save_as(file_type='json', directory=str(self.synthetic_data_dir), file_name="single_turn_goldens")
+        return all_goldens
 
     def generate_multi_turn(self, paths: List[str]):
         self.synthesizer.synthetic_goldens = []
         self.synthesizer.synthetic_conversational_goldens = []
+        all_conversations = []
         
-        contexts = self._get_document_contexts(paths)
-        if not contexts:
-            raise ValueError("No readable text found in documents. Please check file contents.")
+        for path in paths:
+            file_name = Path(path).name
+            contexts = self._get_document_contexts([path])
             
-        # Contexts must be List[List[str]]
-        formatted_contexts = [[c] for c in contexts]
-            
-        try:
-             # Try new method name first (following v3 naming convention)
-             if hasattr(self.synthesizer, 'generate_conversational_goldens_from_contexts'):
-                 self.synthesizer.generate_conversational_goldens_from_contexts(
-                    contexts=formatted_contexts,
-                    max_goldens_per_context=self.num_goldens
-                 )
-             else:
-                # Fallback to legacy method name
-                self.synthesizer.generate_conversational_goldens(
-                    contexts=formatted_contexts,
-                    max_goldens_per_context=self.num_goldens
-                )
-        except AttributeError:
-             # If both fail, we might be on an intermediate version, but let's try the legacy one again safely
-             self.synthesizer.generate_conversational_goldens(
-                contexts=formatted_contexts,
-                max_goldens_per_context=self.num_goldens
-             )
+            if not contexts:
+                continue
+                
+            # Contexts must be List[List[str]]
+            formatted_contexts = [[c] for c in contexts]
+                
+            try:
+                batch_conversations = []
+                 # Try new method name first (following v3 naming convention)
+                if hasattr(self.synthesizer, 'generate_conversational_goldens_from_contexts'):
+                     batch_conversations = self.synthesizer.generate_conversational_goldens_from_contexts(
+                        contexts=formatted_contexts,
+                        max_goldens_per_context=self.num_goldens,
+                        _show_indicator=False
+                     )
+                else:
+                    # Fallback to legacy method name
+                    batch_conversations = self.synthesizer.generate_conversational_goldens(
+                        contexts=formatted_contexts,
+                        max_goldens_per_context=self.num_goldens,
+                        _show_indicator=False
+                    )
+                
+                # Manually inject source file (multi-turn structure might differ, checking standard property)
+                for conv in batch_conversations:
+                    if hasattr(conv, 'source_file'):
+                        conv.source_file = file_name
+                        
+                all_conversations.extend(batch_conversations)
+
+            except Exception as e:
+                # If one method fails, try the other as fallback (legacy behavior fallback logic preserved)
+                 try:
+                     batch_conversations = self.synthesizer.generate_conversational_goldens(
+                        contexts=formatted_contexts,
+                        max_goldens_per_context=self.num_goldens,
+                        _show_indicator=False
+                     )
+                     for conv in batch_conversations:
+                        if hasattr(conv, 'source_file'):
+                            conv.source_file = file_name
+                     all_conversations.extend(batch_conversations)
+                 except Exception:
+                     print(f"Error generating multi-turn for {file_name}: {e}")
         
-        if not self.synthesizer.synthetic_conversational_goldens:
+        if not all_conversations:
             raise ValueError("No conversations were generated. Please check your documents.")
         
+        # Update proper list for saving
+        self.synthesizer.synthetic_conversational_goldens = all_conversations
         self.synthesizer.save_as(file_type='json', directory=str(self.synthetic_data_dir), file_name="multi_turn_goldens")
+        return all_conversations

@@ -88,7 +88,7 @@ function App() {
   // Derived Data
   const syntheticData = dataTab === 'single' ? singleTurnGoldens : multiTurnGoldens;
 
-  // Initialization
+  // Initialization & Heartbeat
   useEffect(() => {
     // Session ID
     let sessionId = sessionStorage.getItem('sofi_session_id');
@@ -106,7 +106,10 @@ function App() {
 
     // Loading Simulation
     const timer = setTimeout(() => setLoading(false), 2300);
-    return () => clearTimeout(timer);
+
+    return () => {
+      clearTimeout(timer);
+    };
   }, []);
 
   // Health Check

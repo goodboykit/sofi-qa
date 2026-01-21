@@ -64,7 +64,7 @@ async def cleanup_stale_sessions():
             break
         except Exception as e:
             print(f"❌ Error in session cleanup: {e}")
-            await asyncio.sleep(60)  
+            await asyncio.sleep(60)
 
 
 @asynccontextmanager
