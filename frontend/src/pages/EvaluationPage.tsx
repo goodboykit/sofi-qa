@@ -25,8 +25,8 @@ export function EvaluationPage() {
     }, [logs]);
 
     const handleRun = () => {
-        const singleTurn = JSON.parse(sessionStorage.getItem('syn_single_turn') || '[]');
-        const multiTurn = JSON.parse(sessionStorage.getItem('syn_multi_turn') || '[]');
+        const singleTurn = JSON.parse(sessionStorage.getItem('goldens_single') || '[]');
+        const multiTurn = JSON.parse(sessionStorage.getItem('goldens_multi') || '[]');
         start(singleTurn, multiTurn, config, 'online');
     };
 
@@ -238,7 +238,12 @@ export function EvaluationPage() {
                                         <div className="context-list">
                                             {Array.isArray(selectedTest.details.context)
                                                 ? selectedTest.details.context.map((c: string, cIdx: number) => (
-                                                    <ContextParser key={cIdx} text={c} />
+                                                    <div key={cIdx} style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid var(--border)' }}>
+                                                        <div className="data-box-label" style={{ marginBottom: '8px', opacity: 0.6, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                            Retrieval Chunk #{cIdx + 1}
+                                                        </div>
+                                                        <ContextParser text={c} />
+                                                    </div>
                                                 ))
                                                 : <ContextParser text={selectedTest.details.context} />
                                             }
@@ -306,18 +311,35 @@ function ContextParser({ text }: { text: string }) {
 
     // Question starters to detect user messages
     const questionStarters = [
-        'what', 'when', 'where', 'who', 'why', 'how', 'which',
+        // English - Standard Question Words
+        'what', 'when', 'where', 'who', 'why', 'how', 'which', 'whose', 'whom',
+
+        // English - Auxiliary & Modal Verbs (starting a sentence)
+        'is', 'are', 'am', 'was', 'were',
+        'do', 'does', 'did',
+        'can', 'could',
+        'will', 'would', 'shall', 'should',
+        'have', 'has', 'had',
+        'may', 'might', 'must',
+
+        // English - Common Phrases (Specific checks)
         'is there', 'are there', 'is it', 'is the', 'are you', 'are we',
-        'do you', 'do we', 'do they', 'does', 'did',
-        'can i', 'can we', 'can you', 'could', 'would', 'will', 'shall',
-        'have you', 'has', 'had',
-        'ano', 'saan', 'nasaan', 'kailan', 'kelan', 'sino', 'bakit', 'paano', 'magkano', 'ilan', 'gaano',
-        'pwede ba', 'puwede ba', 'pwede', 'puwede', 'maaari ba', 'maaari',
-        'meron ba', 'mayroon ba', 'may ba', 'wala ba',
-        'libre ba', 'open ba', 'available ba', 'bukas ba', 'sarado ba',
-        'totoo ba', 'talaga ba', 'ganoon ba', 'ganon ba', 'diba',
-        'kailangan ba', 'kelangan ba', 'need ba',
-        'ok lang ba', 'okay lang ba', 'allowed ba', 'accept ba', 'valid ba', 'included ba'
+        'do you', 'do we', 'do they',
+        'can i', 'can we', 'can you',
+
+        // Tagalog / Filipino - Question Words
+        'ano', 'anu-ano', 'saan', 'nasaan', 'kailan', 'kelan', 'sino', 'sinu-sino',
+        'bakit', 'paano', 'pano', 'gaano', 'ilan', 'magkano', 'alin', 'kanino',
+
+        // Tagalog / Filipino - Common Question Starters & Particles
+        'pwede', 'puwede', 'maaari',
+        'meron', 'mayroon', 'may', 'wala',
+        'libre', 'open', 'bukas', 'sarado', 'available',
+        'totoo', 'talaga', 'ganoon', 'ganon', 'diba', 'di ba',
+        'kailangan', 'kelangan', 'need',
+        'ok lang', 'okay lang',
+        'allowed', 'accept', 'valid', 'included',
+        'paki', 'possible', 'how much'
     ];
 
     const isQuestion = (line: string): boolean => {

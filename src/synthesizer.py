@@ -219,11 +219,11 @@ class DatasetGenerator:
                 
                 # Manually inject source file (multi-turn structure might differ, checking standard property)
                 for conv in batch_conversations:
-                    if hasattr(conv, 'source_file'):
+                    # Fix for source_files (plural in multi-turn)
+                    if hasattr(conv, 'source_files'):
+                        conv.source_files = [file_name]
+                    elif hasattr(conv, 'source_file'):
                         conv.source_file = file_name
-                    # Standardize expected_output for frontend consistency
-                    if hasattr(conv, 'expected_outcome'):
-                        conv.expected_output = conv.expected_outcome
                         
                 all_conversations.extend(batch_conversations)
 
@@ -236,11 +236,11 @@ class DatasetGenerator:
                         max_goldens_per_context=self.num_goldens
                      )
                      for conv in batch_conversations:
-                        if hasattr(conv, 'source_file'):
+                        # Fix for source_files (plural in multi-turn)
+                        if hasattr(conv, 'source_files'):
+                            conv.source_files = [file_name]
+                        elif hasattr(conv, 'source_file'):
                             conv.source_file = file_name
-                        # Standardize expected_output for frontend consistency
-                        if hasattr(conv, 'expected_outcome'):
-                            conv.expected_output = conv.expected_outcome
                             
                      all_conversations.extend(batch_conversations)
                      last_error = None # Clear error if fallback worked

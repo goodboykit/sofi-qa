@@ -27,11 +27,16 @@ class ChatbotAssistant:
         
         return default_prompt
 
-    def generate_response(self, input_text: str):
+    def generate_response(self, input_text: str, context: list[str] = None):
         try:
-            prompt = f"""System: {self.system_prompt}
-
-User: {input_text}"""
+            prompt = f"System: {self.system_prompt}\n\n"
+            
+            if context:
+                # Join context chunks into a single string
+                context_str = "\n".join(context)
+                prompt += f"Context:\n{context_str}\n\n"
+            
+            prompt += f"User: {input_text}"
             
             response = self.model.generate(prompt)
             

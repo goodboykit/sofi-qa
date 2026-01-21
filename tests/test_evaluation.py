@@ -39,7 +39,7 @@ def test_fact_retrieval(golden):
     assistant = ChatbotAssistant()
     
     try:
-        actual_output = assistant.generate_response(golden.input)
+        actual_output = assistant.generate_response(golden.input, context=golden.context)
     except Exception as e:
         actual_output = f"Error generating response: {str(e)}"
     
@@ -72,7 +72,8 @@ def test_conversation_quality(convo_golden):
 
     async def chatbot_callback(input, turns=None, thread_id=None):
         try:
-            response = assistant.generate_response(input)
+            # Pass the context from the golden to the assistant
+            response = assistant.generate_response(input, context=convo_golden.context)
             return Turn(role="assistant", content=str(response))
         except Exception as e:
             return Turn(role="assistant", content=f"Error: {str(e)}")

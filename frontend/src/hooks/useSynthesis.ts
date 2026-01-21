@@ -39,6 +39,9 @@ export function useSynthesis({ onComplete }: UseSynthesisProps) {
         const startTime = Date.now();
         log('Starting synthesis pipeline', 'primary');
 
+        let result1Data: any[] = [];
+        let result2Data: any[] = [];
+
         try {
             // Check documents
             log('Scanning documents');
@@ -70,7 +73,6 @@ export function useSynthesis({ onComplete }: UseSynthesisProps) {
             setProgress(30);
 
             let done1 = false;
-            let result1Data = [];
             while (!done1 && !shouldStop.current) {
                 await new Promise(r => setTimeout(r, 2000));
                 if (shouldStop.current) break;
@@ -110,7 +112,6 @@ export function useSynthesis({ onComplete }: UseSynthesisProps) {
             setProgress(60);
 
             let done2 = false;
-            let result2Data = [];
             while (!done2 && !shouldStop.current) {
                 await new Promise(r => setTimeout(r, 2000));
                 if (shouldStop.current) break;
@@ -153,6 +154,17 @@ export function useSynthesis({ onComplete }: UseSynthesisProps) {
             log('Output: Saved to Session Storage', 'success');
 
         } catch (err) {
+            // If we have some results (e.g. single-turn succeeded but multi-turn failed), save them!
+            if (result1Data.length > 0 || result2Data.length > 0) {
+                log('Saving partial results...', 'warning');
+                setResults({
+                    singleTurn: result1Data.length,
+                    multiTurn: result2Data.length,
+                    duration: ((Date.now() - startTime) / 1000).toFixed(1) + 's'
+                });
+                onComplete(result1Data, result2Data);
+            }
+
             if (!shouldStop.current) {
                 log(err instanceof Error ? err.message : 'Error occurred', 'error');
             }
