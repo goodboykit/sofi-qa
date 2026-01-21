@@ -1,26 +1,27 @@
-import { useState, useRef, useEffect } from 'react';
-import axios from 'axios';
+import { useRef, useEffect } from 'react';
 import { Icons } from '../components/common/Icons';
-import type { LogEntry, Results, Config, Document } from '../types';
+import type { LogEntry } from '../types';
 
 interface SynthesisPageProps {
     status: 'online' | 'offline' | 'checking';
-    documents: Document[];
-    config: Config;
-    onSynthesisComplete: (single: any[], multi: any[]) => void;
     logs: LogEntry[];
-    setLogs: React.Dispatch<React.SetStateAction<LogEntry[]>>;
+    running: boolean;
+    progress: number;
+    results: { singleTurn: number, multiTurn: number, duration: string } | null;
+    onStart: () => void;
+    onStop: () => void;
 }
 
-export function SynthesisPage({ status, documents, config, onSynthesisComplete, logs, setLogs }: SynthesisPageProps) {
-    const [running, setRunning] = useState(false);
-    const [progress, setProgress] = useState(0);
-    const [results, setResults] = useState<Results | null>(null);
-
+export function SynthesisPage({
+    status,
+    logs,
+    running,
+    progress,
+    results,
+    onStart,
+    onStop
+}: SynthesisPageProps) {
     const consoleRef = useRef<HTMLDivElement>(null);
-    const logId = useRef(0);
-    const currentJobIds = useRef<string[]>([]);
-    const shouldStop = useRef(false);
 
     // Auto-scroll logs
     useEffect(() => {
@@ -28,13 +29,6 @@ export function SynthesisPage({ status, documents, config, onSynthesisComplete, 
             consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
         }
     }, [logs]);
-
-    const log = (message: string, type: LogEntry['type'] = 'info') => {
-        const time = new Date().toLocaleTimeString('en-US', {
-            hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
-        });
-        setLogs(prev => [...prev, { id: logId.current++, time, message, type }]);
-    };
 
     const getIcon = (type: LogEntry['type']) => {
         switch (type) {
@@ -44,163 +38,6 @@ export function SynthesisPage({ status, documents, config, onSynthesisComplete, 
             case 'primary': return Icons.arrow;
             default: return Icons.info;
         }
-    };
-
-    const start = async () => {
-        if (status !== 'online') {
-            log('Backend not available', 'error');
-            return;
-        }
-
-        setRunning(true);
-        setProgress(0);
-        setResults(null);
-        setLogs([]);
-        shouldStop.current = false;
-        currentJobIds.current = [];
-
-        const startTime = Date.now();
-        log('Starting synthesis pipeline', 'primary');
-
-        try {
-            // Check documents
-            log('Scanning documents');
-            setProgress(10);
-
-            // Use all uploaded documents
-            const docsToProcess = documents;
-
-            if (docsToProcess.length === 0) {
-                log('No documents uploaded', 'warning');
-                log('Please upload documents in the Documents tab', 'info');
-                setRunning(false);
-                return;
-            }
-
-            log(`Processing ${docsToProcess.length} document(s)`, 'success');
-            setProgress(20);
-
-            // Single-turn
-            log('Generating single-turn Q&A', 'primary');
-            const ids = docsToProcess.map(d => d.id);
-
-            const job1 = await axios.post('/api/synthesis/start', {
-                document_ids: ids,
-                synthesis_type: 'single',
-                max_goldens_per_context: 2,
-                config: config
-            });
-
-            currentJobIds.current.push(job1.data.job_id);
-            log(`Job ${job1.data.job_id} started`);
-            setProgress(30);
-
-            let done1 = false;
-            let result1Data = [];
-            while (!done1 && !shouldStop.current) {
-                await new Promise(r => setTimeout(r, 2000));
-                if (shouldStop.current) break;
-
-                const res = await axios.get(`/api/synthesis/status/${job1.data.job_id}`);
-
-                if (res.data.status === 'running') {
-                    log(res.data.message);
-                    setProgress(p => Math.min(p + 5, 45));
-                } else if (res.data.status === 'completed') {
-                    done1 = true;
-                    result1Data = res.data.result?.data || [];
-                    log(`Single-turn: ${res.data.result?.count || 0} pairs`, 'success');
-                    setProgress(50);
-                } else if (res.data.status === 'failed' || res.data.status === 'cancelled') {
-                    throw new Error(res.data.message);
-                }
-            }
-
-            if (shouldStop.current) {
-                log('Synthesis stopped by user', 'warning');
-                return;
-            }
-
-            // Multi-turn
-            log('Generating multi-turn conversations', 'primary');
-
-            const job2 = await axios.post('/api/synthesis/start', {
-                document_ids: ids,
-                synthesis_type: 'multi',
-                max_goldens_per_context: 3,
-                config: config
-            });
-
-            currentJobIds.current.push(job2.data.job_id);
-            log(`Job ${job2.data.job_id} started`);
-            setProgress(60);
-
-            let done2 = false;
-            let result2Data = [];
-            while (!done2 && !shouldStop.current) {
-                await new Promise(r => setTimeout(r, 2000));
-                if (shouldStop.current) break;
-
-                const res = await axios.get(`/api/synthesis/status/${job2.data.job_id}`);
-
-                if (res.data.status === 'running') {
-                    log(res.data.message);
-                    setProgress(p => Math.min(p + 5, 85));
-                } else if (res.data.status === 'completed') {
-                    done2 = true;
-                    result2Data = res.data.result?.data || [];
-                    log(`Multi-turn: ${res.data.result?.count || 0} conversations`, 'success');
-                    setProgress(90);
-                } else if (res.data.status === 'failed' || res.data.status === 'cancelled') {
-                    throw new Error(res.data.message);
-                }
-            }
-
-            if (shouldStop.current) {
-                log('Synthesis stopped by user', 'warning');
-                return;
-            }
-
-            // Results
-            log('Finalizing');
-            const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-
-            setResults({
-                singleTurn: result1Data.length,
-                multiTurn: result2Data.length,
-                duration: `${duration}s`
-            });
-
-            // Save to parent state
-            onSynthesisComplete(result1Data, result2Data);
-
-            setProgress(100);
-            log(`Completed in ${duration}s`, 'success');
-            log('Output: Saved to Session Storage', 'success');
-
-        } catch (err) {
-            if (!shouldStop.current) {
-                log(err instanceof Error ? err.message : 'Error occurred', 'error');
-            }
-        } finally {
-            setRunning(false);
-            currentJobIds.current = [];
-        }
-    };
-
-    const stop = async () => {
-        shouldStop.current = true;
-        log('Stopping synthesis...', 'warning');
-
-        for (const jobId of currentJobIds.current) {
-            try {
-                await axios.post(`/api/synthesis/cancel/${jobId}`);
-                log(`Job ${jobId} cancelled`, 'warning');
-            } catch {
-                // Job may have already completed
-            }
-        }
-        setRunning(false);
     };
 
     return (
@@ -215,7 +52,7 @@ export function SynthesisPage({ status, documents, config, onSynthesisComplete, 
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                         <button
                             className="btn btn-primary"
-                            onClick={start}
+                            onClick={onStart}
                             disabled={running || status !== 'online'}
                         >
                             {running ? (
@@ -231,7 +68,7 @@ export function SynthesisPage({ status, documents, config, onSynthesisComplete, 
                             )}
                         </button>
                         {running && (
-                            <button className="btn btn-stop" onClick={stop}>
+                            <button className="btn btn-stop" onClick={onStop}>
                                 {Icons.stop}
                                 Stop
                             </button>

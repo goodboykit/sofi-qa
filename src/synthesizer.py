@@ -147,8 +147,11 @@ class DatasetGenerator:
         if not contexts:
             raise ValueError("No readable text found in documents. Please check file contents.")
 
+        # Contexts must be List[List[str]]
+        formatted_contexts = [[c] for c in contexts]
+
         self.synthesizer.generate_goldens_from_contexts(
-            contexts=contexts,
+            contexts=formatted_contexts,
             max_goldens_per_context=self.num_goldens,
             include_expected_output=True
         )
@@ -166,24 +169,27 @@ class DatasetGenerator:
         if not contexts:
             raise ValueError("No readable text found in documents. Please check file contents.")
             
+        # Contexts must be List[List[str]]
+        formatted_contexts = [[c] for c in contexts]
+            
         try:
-             # Support both new and legacy DeepEval versions
-             if hasattr(self.synthesizer, 'generate_goldens_from_contexts'):
-                 self.synthesizer.generate_goldens_from_contexts(
-                    contexts=contexts,
-                    max_goldens_per_context=self.num_goldens,
-                    _type="conversational"
+             # Try new method name first (following v3 naming convention)
+             if hasattr(self.synthesizer, 'generate_conversational_goldens_from_contexts'):
+                 self.synthesizer.generate_conversational_goldens_from_contexts(
+                    contexts=formatted_contexts,
+                    max_goldens_per_context=self.num_goldens
                  )
              else:
+                # Fallback to legacy method name
                 self.synthesizer.generate_conversational_goldens(
-                    contexts=contexts,
+                    contexts=formatted_contexts,
                     max_goldens_per_context=self.num_goldens
                 )
         except AttributeError:
-             self.synthesizer.generate_goldens_from_contexts(
-                contexts=contexts,
-                max_goldens_per_context=self.num_goldens,
-                _type="conversational"
+             # If both fail, we might be on an intermediate version, but let's try the legacy one again safely
+             self.synthesizer.generate_conversational_goldens(
+                contexts=formatted_contexts,
+                max_goldens_per_context=self.num_goldens
              )
         
         if not self.synthesizer.synthetic_conversational_goldens:

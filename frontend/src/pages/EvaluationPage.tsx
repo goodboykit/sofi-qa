@@ -1,120 +1,45 @@
-import { useState, useRef, useEffect } from 'react';
-import axios from 'axios';
+import { useRef, useEffect } from 'react';
 import { Icons } from '../components/common/Icons';
-import type { Config, EvalResult } from '../types';
+import type { EvalResult } from '../types';
 
 interface EvaluationPageProps {
     status: 'online' | 'offline' | 'checking';
-    singleTurnGoldens: any[];
-    multiTurnGoldens: any[];
-    config: Config;
+    // singleTurnGoldens: any[]; // Unused in UI
+    // multiTurnGoldens: any[]; // Unused in UI
+    // config: Config; // Unused in UI
+    running: boolean;
+    result: EvalResult | null;
+    message: string;
+    logs: string[];
+    onStart: () => void;
+    onStop: () => void;
 }
 
-export function EvaluationPage({ status, singleTurnGoldens, multiTurnGoldens, config }: EvaluationPageProps) {
-    const [evalRunning, setEvalRunning] = useState(false);
-    const [evalResult, setEvalResult] = useState<EvalResult | null>(null);
-    const [evalMessage, setEvalMessage] = useState('');
-    const [evalLogs, setEvalLogs] = useState<string[]>([]);
-
+export function EvaluationPage({
+    status,
+    running,
+    result,
+    message,
+    logs,
+    onStart,
+    onStop
+}: EvaluationPageProps) {
     const evalConsoleRef = useRef<HTMLDivElement>(null);
-    const evalEventSourceRef = useRef<EventSource | null>(null);
 
     // Auto-scroll
     useEffect(() => {
         if (evalConsoleRef.current) {
             evalConsoleRef.current.scrollTop = evalConsoleRef.current.scrollHeight;
         }
-    }, [evalLogs]);
-
-    const startEvaluation = async () => {
-        if (status !== 'online') {
-            setEvalMessage('Backend not available');
-            return;
-        }
-        setEvalRunning(true);
-        setEvalResult(null);
-        setEvalLogs([]);
-        setEvalMessage('Initializing test run...');
-
-        try {
-            // Start evaluation job
-            const startRes = await axios.post('/api/evaluation/start', {
-                single_turn_goldens: singleTurnGoldens,
-                multi_turn_goldens: multiTurnGoldens,
-                config: config
-            });
-
-            const jobId = startRes.data.job_id;
-            setEvalMessage('Connecting to event stream...');
-
-            const eventSource = new EventSource(`/api/evaluation/stream?job_id=${jobId}`);
-            evalEventSourceRef.current = eventSource;
-
-            eventSource.addEventListener('log', (e) => {
-                setEvalLogs(prev => [...prev, e.data]);
-                setEvalMessage('Running tests...');
-            });
-
-            eventSource.addEventListener('test', (e) => {
-                const test = JSON.parse(e.data);
-                setEvalLogs(prev => [...prev, `${test.status === 'passed' ? '✓' : '✗'} ${test.name}`]);
-            });
-
-            eventSource.addEventListener('complete', (e) => {
-                const result = JSON.parse(e.data);
-                setEvalResult(result);
-                setEvalMessage(`Completed: ${result.passed} passed, ${result.failed} failed`);
-                setEvalRunning(false);
-                evalEventSourceRef.current = null;
-                eventSource.close();
-            });
-
-            eventSource.addEventListener('error', (e: any) => {
-                // Ignore end of stream error if we already finished
-                if (eventSource.readyState === EventSource.CLOSED) return;
-
-                if (e.data) {
-                    setEvalMessage(`Error: ${e.data}`);
-                } else {
-                    setEvalMessage('Connection closed');
-                }
-                setEvalRunning(false);
-                evalEventSourceRef.current = null;
-                eventSource.close();
-            });
-
-            eventSource.onerror = () => {
-                if (eventSource.readyState !== EventSource.CLOSED) {
-                    setEvalMessage('Connection error');
-                    setEvalRunning(false);
-                    evalEventSourceRef.current = null;
-                    eventSource.close();
-                }
-            };
-
-        } catch (error) {
-            setEvalMessage('Failed to start evaluation');
-            setEvalRunning(false);
-        }
-    };
-
-    const stopEvaluation = () => {
-        if (evalEventSourceRef.current) {
-            evalEventSourceRef.current.close();
-            evalEventSourceRef.current = null;
-        }
-        setEvalRunning(false);
-        setEvalMessage('Stopped by user');
-        setEvalLogs(prev => [...prev, '--- Test run stopped by user ---']);
-    };
+    }, [logs]);
 
     return (
         <main
             className="main"
-            style={evalResult ? { maxWidth: '1200px', margin: '0 auto', overflow: 'hidden', height: '100%' } : {}}
+            style={result ? { maxWidth: '1200px', margin: '0 auto', overflow: 'hidden', height: '100%' } : {}}
         >
             {/* Hero */}
-            {!evalResult && (
+            {!result && (
                 <div className="hero-card">
                     <div className="hero-content">
                         <h1 className="hero-title">Run <span>Quality Tests</span></h1>
@@ -124,16 +49,16 @@ export function EvaluationPage({ status, singleTurnGoldens, multiTurnGoldens, co
                         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                             <button
                                 className="btn btn-primary"
-                                onClick={startEvaluation}
-                                disabled={evalRunning || status !== 'online'}
+                                onClick={onStart}
+                                disabled={running || status !== 'online'}
                             >
                                 {Icons.beaker}
                                 Run Tests
                             </button>
-                            {evalRunning && (
+                            {running && (
                                 <button
                                     className="btn btn-danger"
-                                    onClick={stopEvaluation}
+                                    onClick={onStop}
                                 >
                                     {Icons.stop}
                                     Stop
@@ -145,17 +70,17 @@ export function EvaluationPage({ status, singleTurnGoldens, multiTurnGoldens, co
             )}
 
             {/* Logs - Only show if NO results */}
-            {!evalResult && (
+            {!result && (
                 <div className="console-card">
                     <div className="console-header">
                         <span className="console-title">Execution Logs</span>
-                        <span className="console-meta">{evalMessage || `${evalLogs.length} lines`}</span>
+                        <span className="console-meta">{message || `${logs.length} lines`}</span>
                     </div>
                     <div className="console-body" ref={evalConsoleRef}>
-                        {evalLogs.map((log, i) => (
+                        {logs.map((log, i) => (
                             <div key={i} className="console-line">{log}</div>
                         ))}
-                        {evalLogs.length === 0 && (
+                        {logs.length === 0 && (
                             <div style={{
                                 display: 'flex',
                                 flexDirection: 'column',
@@ -179,14 +104,14 @@ export function EvaluationPage({ status, singleTurnGoldens, multiTurnGoldens, co
             )}
 
             {/* Results */}
-            {evalResult && (
+            {result && (
                 <div className="card-container" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                     {/* Test List with Integrated Summary */}
                     <div className="documents-card" style={{ height: '100%' }}>
                         <div className="documents-header" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '16px', paddingBottom: '16px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <span className="documents-title">Test Results</span>
-                                <span className="documents-count">{evalResult.tests.length} tests</span>
+                                <span className="documents-count">{result.tests.length} tests</span>
                             </div>
 
                             <div style={{
@@ -202,7 +127,7 @@ export function EvaluationPage({ status, singleTurnGoldens, multiTurnGoldens, co
                                     textAlign: 'center'
                                 }}>
                                     <div style={{ fontSize: '20px', fontWeight: 700, color: '#4ade80' }}>
-                                        {evalResult.passed}
+                                        {result.passed}
                                     </div>
                                     <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 500, textTransform: 'uppercase' }}>
                                         Passed
@@ -217,7 +142,7 @@ export function EvaluationPage({ status, singleTurnGoldens, multiTurnGoldens, co
                                     textAlign: 'center'
                                 }}>
                                     <div style={{ fontSize: '20px', fontWeight: 700, color: '#f87171' }}>
-                                        {evalResult.failed}
+                                        {result.failed}
                                     </div>
                                     <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 500, textTransform: 'uppercase' }}>
                                         Failed
@@ -232,7 +157,7 @@ export function EvaluationPage({ status, singleTurnGoldens, multiTurnGoldens, co
                                     textAlign: 'center'
                                 }}>
                                     <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                                        {evalResult.total}
+                                        {result.total}
                                     </div>
                                     <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 500, textTransform: 'uppercase' }}>
                                         Total
@@ -242,7 +167,7 @@ export function EvaluationPage({ status, singleTurnGoldens, multiTurnGoldens, co
                         </div>
                         <div className="documents-body" style={{ padding: '12px', flex: 1, overflowY: 'auto', minHeight: 0 }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                {evalResult.tests.length === 0 ? (
+                                {result.tests.length === 0 ? (
                                     <div style={{
                                         padding: '24px',
                                         background: 'rgba(239, 68, 68, 0.1)',
@@ -257,10 +182,10 @@ export function EvaluationPage({ status, singleTurnGoldens, multiTurnGoldens, co
                                         <br /><br />
                                         System Output:
                                         <br />
-                                        {evalLogs.join('\n') || 'No output logs available.'}
+                                        {logs.join('\n') || 'No output logs available.'}
                                     </div>
                                 ) : (
-                                    evalResult.tests.map((test, idx) => (
+                                    result.tests.map((test, idx) => (
                                         <div
                                             key={idx}
                                             style={{
@@ -355,7 +280,7 @@ export function EvaluationPage({ status, singleTurnGoldens, multiTurnGoldens, co
                         }}>
                             <button
                                 className="btn btn-primary"
-                                onClick={() => setEvalResult(null)}
+                                onClick={onStart} // Reset handled by starting new
                                 style={{ minWidth: '120px' }}
                             >
                                 Run New Test
